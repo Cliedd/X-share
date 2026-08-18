@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db, uid, now } from "./db";
-import { requireSession, clearSession } from "./auth";
+import { requireSession, clearSession, unlinkXAccount } from "./auth";
 import { ingestConnector, fetchFeed } from "./rss";
 import { generateVariants } from "./ai";
 import { publishDraft, refreshMetrics } from "./publisher";
@@ -205,7 +205,7 @@ export async function unscheduleDraft(formData: FormData) {
 }
 
 export async function publishNow(formData: FormData) {
-  const { user, workspace } = await session();
+  const { x, workspace } = await session();
   const id = String(formData.get("id") ?? "");
 
   const draft = db()
@@ -214,7 +214,7 @@ export async function publishNow(formData: FormData) {
 
   if (!draft) return { error: "Brouillon introuvable." };
 
-  const result = await publishDraft(user, workspace, draft);
+  const result = await publishDraft(x, workspace, draft);
   refresh();
   return result.ok ? { ok: result.message } : { error: result.message };
 }
@@ -238,14 +238,12 @@ export async function updateSettings(formData: FormData) {
 
   db()
     .prepare(
-      `UPDATE workspaces SET framework = ?, custom_prompt = ?, product_context = ?, plan = ?
-       WHERE id = ?`,
+      `UPDATE workspaces SET framework = ?, custom_prompt = ?, product_context = ? WHERE id = ?`,
     )
     .run(
       framework,
       String(formData.get("custom_prompt") ?? "").trim() || null,
       String(formData.get("product_context") ?? "").trim() || null,
-      String(formData.get("plan") ?? workspace.plan),
       workspace.id,
     );
 
@@ -254,8 +252,8 @@ export async function updateSettings(formData: FormData) {
 }
 
 export async function refreshAnalytics() {
-  const { user, workspace } = await session();
-  const result = await refreshMetrics(user, workspace);
+  const { x, workspace } = await session();
+  const result = await refreshMetrics(x, workspace);
   refresh();
   return {
     ok:
@@ -263,6 +261,13 @@ export async function refreshAnalytics() {
         ? "Les analyses sont déjà à jour pour la cadence de votre offre."
         : `${result.refreshed} publication(s) actualisée(s).`,
   };
+}
+
+export async function disconnectX() {
+  const { user } = await session();
+  unlinkXAccount(user.id);
+  refresh();
+  return { ok: "Compte X déconnecté. Les publications repassent en simulation." };
 }
 
 export async function logout() {

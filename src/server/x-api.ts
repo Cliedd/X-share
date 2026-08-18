@@ -1,4 +1,4 @@
-import type { User } from "./types";
+import type { XConnection } from "./types";
 
 /**
  * Client X API v2 réduit à ce dont CLIEDD a besoin : publier et relever les
@@ -10,8 +10,11 @@ export type PublishResult =
   | { ok: true; postId: string; simulated: boolean }
   | { ok: false; error: string; retryable: boolean };
 
-export async function publishPost(user: User, content: string): Promise<PublishResult> {
-  if (!user.access_token) {
+export async function publishPost(
+  connection: XConnection | null,
+  content: string,
+): Promise<PublishResult> {
+  if (!connection?.access_token) {
     return { ok: true, postId: `sim_${crypto.randomUUID().slice(0, 12)}`, simulated: true };
   }
 
@@ -19,7 +22,7 @@ export async function publishPost(user: User, content: string): Promise<PublishR
     const response = await fetch("https://api.x.com/2/tweets", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${user.access_token}`,
+        Authorization: `Bearer ${connection.access_token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ text: content }),
@@ -58,13 +61,16 @@ export type Metrics = {
   replies: number;
 };
 
-export async function fetchMetrics(user: User, postIds: string[]): Promise<Map<string, Metrics>> {
+export async function fetchMetrics(
+  connection: XConnection | null,
+  postIds: string[],
+): Promise<Map<string, Metrics>> {
   const results = new Map<string, Metrics>();
   if (postIds.length === 0) return results;
 
   // Mode simulation : métriques dérivées de l'identifiant, donc stables
   // d'un appel à l'autre plutôt qu'aléatoires.
-  if (!user.access_token) {
+  if (!connection?.access_token) {
     for (const id of postIds) {
       const seed = [...id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
       results.set(id, {
@@ -79,7 +85,10 @@ export async function fetchMetrics(user: User, postIds: string[]): Promise<Map<s
 
   const response = await fetch(
     `https://api.x.com/2/tweets?ids=${postIds.join(",")}&tweet.fields=public_metrics`,
-    { headers: { Authorization: `Bearer ${user.access_token}` }, signal: AbortSignal.timeout(20_000) },
+    {
+      headers: { Authorization: `Bearer ${connection.access_token}` },
+      signal: AbortSignal.timeout(20_000),
+    },
   );
 
   if (!response.ok) return results;

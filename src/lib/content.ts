@@ -84,7 +84,7 @@ export const pricingTeaser = {
   price: "9,99 $",
   period: "/mois",
   features: "Connecteurs RSS · Brouillons IA · Planification visuelle · Relecture préalable",
-  primaryCta: { label: "Essayez CLIEDD dès maintenant", href: "/commencer" },
+  primaryCta: { label: "Essayez CLIEDD dès maintenant", href: "/api/stripe/checkout?offre=starter&cycle=month" },
   secondaryCta: { label: "Voir tous les forfaits", href: "/tarification" },
 } as const;
 
@@ -189,12 +189,12 @@ export const pricingPage = {
   compareHint: "Balayez latéralement pour comparer →",
   billingTerms: {
     title: "Conditions de facturation",
-    body: "Les abonnements sont renouvelés mensuellement ou annuellement, sauf annulation. Paddle se charge du traitement des paiements, des factures et des taxes.",
+    body: "Les abonnements sont renouvelés mensuellement ou annuellement, sauf annulation. Stripe se charge du traitement des paiements, des factures et des taxes.",
   },
   finalCta: {
     title: "Prêt à automatiser X ?",
     body: "Commencez par un essai gratuit de Starter ou Pro, connectez X et planifiez votre première semaine dans le planificateur hebdomadaire.",
-    cta: { label: "Essai gratuit", href: "/commencer" },
+    cta: { label: "Essai gratuit", href: "/api/stripe/checkout?offre=pro&cycle=month" },
   },
 } as const;
 
@@ -245,7 +245,7 @@ export const pricingFaq = [
   },
   {
     q: "Puis-je annuler à tout moment ?",
-    a: "Oui. Les abonnements sont renouvelés automatiquement jusqu'à leur annulation. Paddle gère la facturation, les taxes et le portail client.",
+    a: "Oui. Les abonnements sont renouvelés automatiquement jusqu'à leur annulation. Stripe gère la facturation, les taxes et le portail client.",
   },
   {
     q: "Que contient la catégorie Connecteurs ?",
@@ -267,7 +267,7 @@ export const getStarted = {
   legalTerms: "conditions d'utilisation",
   legalMiddle: " et la ",
   legalPrivacy: "politique de confidentialité",
-  legalSuffix: " de CLIEDD. Les abonnements payants sont gérés par Paddle.",
+  legalSuffix: " de CLIEDD. Les paiements sont traités par Stripe.",
 } as const;
 
 export const footer = {

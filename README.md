@@ -52,13 +52,63 @@ démarrage, dans `.data/` (ignorée par git).
 ### Passer en services réels
 
 Copiez `.env.example` vers `.env.local` et renseignez ce dont vous avez besoin.
-Les deux blocs sont indépendants : vous pouvez activer l'IA sans X, ou
-l'inverse.
+Les quatre blocs sont **indépendants** : activer le paiement n'oblige pas à
+configurer l'IA, et inversement.
 
-| Variable                          | Effet une fois renseignée                        |
-| --------------------------------- | ------------------------------------------------ |
-| `ANTHROPIC_API_KEY`               | les brouillons sont rédigés par Claude            |
-| `X_CLIENT_ID` + `X_CLIENT_SECRET` | la connexion et la publication passent par X      |
+| Variables                                    | Effet une fois renseignées                    |
+| -------------------------------------------- | --------------------------------------------- |
+| `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`  | connexion par compte Google                    |
+| `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`| paiement, abonnements et factures              |
+| `ANTHROPIC_API_KEY`                          | brouillons rédigés par Claude                  |
+| `X_CLIENT_ID` + `X_CLIENT_SECRET`            | publication réelle sur X                       |
+
+#### Google — connexion au compte
+
+Console Google Cloud → **API et services** → **Identifiants** → **Créer des
+identifiants** → **ID client OAuth** → *Application Web*. Déclarez l'URI de
+redirection **exactement** ainsi :
+
+```
+http://localhost:3000/api/auth/google/callback
+https://VOTRE-DOMAINE/api/auth/google/callback
+```
+
+Copiez l'ID client et le secret dans `.env.local`. Rien d'autre à faire : le
+flux est un Authorization Code avec PKCE, déjà câblé.
+
+#### Stripe — paiement
+
+Tableau de bord Stripe → **Développeurs** → **Clés API**. Collez la clé
+secrète. **Le mode est déduit du préfixe** : `sk_test_…` ouvre le mode test,
+`sk_live_…` la production. Il n'y a aucune bascule à actionner ailleurs.
+
+**Vous n'avez aucun produit ni tarif à créer.** Le catalogue est provisionné
+automatiquement au premier paiement, repéré par `lookup_key` — il n'y a donc
+aucun identifiant de prix à recopier dans la configuration.
+
+Pour les webhooks en local :
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+La commande affiche un secret `whsec_…` à coller dans `STRIPE_WEBHOOK_SECRET`.
+En production, déclarez le point de terminaison
+`https://VOTRE-DOMAINE/api/stripe/webhook` avec les événements
+`checkout.session.completed`, `customer.subscription.created` / `updated` /
+`deleted`, `invoice.paid` et `invoice.payment_failed`.
+
+En mode test, la carte `4242 4242 4242 4242` avec une date future et
+n'importe quel CVC valide un paiement.
+
+Vous pouvez vérifier la chaîne sans clé ni réseau :
+
+```bash
+npm run verifier:facturation
+```
+
+Le script exerce la vérification de signature, l'idempotence des événements,
+la montée en offre, le rejeu d'un même événement et la résiliation.
 
 ### Scripts
 
@@ -69,6 +119,7 @@ l'inverse.
 | `npm run start`     | sert le build de production       |
 | `npm run lint`      | ESLint                            |
 | `npm run typecheck` | `tsc --noEmit`                    |
+| `npm run verifier:facturation` | vérifie la chaîne Stripe sans clé ni réseau |
 
 ### Note pour Windows
 
@@ -108,16 +159,22 @@ propre habillage.
 | `/app/brouillons`     | entrées à transformer, génération IA, édition, approbation        |
 | `/app/planificateur`  | semaine glisser-déposer, file d'attente, suggestion du coach IA   |
 | `/app/analyses`       | impressions, engagement, histogramme, mouvements de crédits       |
-| `/app/parametres`     | cadre rédactionnel, contexte produit, offre, barème               |
+| `/app/facturation`    | offre en cours, changement d'offre, factures, portail Stripe      |
+| `/app/parametres`     | cadre rédactionnel, contexte produit, connexion X, barème         |
 
 ### Routes techniques
 
 | Route                     | Rôle                                                        |
 | ------------------------- | ----------------------------------------------------------- |
-| `/api/auth/x/login`       | démarre l'autorisation OAuth 2.0 X (PKCE)                    |
-| `/api/auth/x/callback`    | échange le code, crée la session                             |
-| `/api/auth/demo`          | connexion de démonstration (si X non configuré)              |
-| `/api/cron/tick`          | ingère les flux, rédige en pilote auto, publie les dus       |
+| `/api/auth/google/login`    | démarre la connexion Google (OAuth 2.0 + PKCE)             |
+| `/api/auth/google/callback` | échange le code, crée la session                           |
+| `/api/auth/x/login`         | démarre l'autorisation de publication X                    |
+| `/api/auth/x/callback`      | rattache le compte X à la session en cours                 |
+| `/api/auth/demo`            | connexion de démonstration (si Google non configuré)       |
+| `/api/stripe/checkout`      | ouvre une session de paiement pour une offre et un cycle   |
+| `/api/stripe/portal`        | ouvre le portail de gestion de l'abonnement                |
+| `/api/stripe/webhook`       | reçoit les événements Stripe (signature vérifiée)          |
+| `/api/cron/tick`            | ingère les flux, rédige en pilote auto, publie les dus     |
 
 ## Comment le produit fonctionne
 
@@ -145,14 +202,28 @@ rembourse en cas d'échec. Les erreurs 5xx et les limites de débit donnent lieu
 l'offre : 48 h / 30 publications en Démarreur, 24 h / 40 en Pro, 6 h / 50 en
 Élite.
 
+**Identité et publication sont séparées.** Google fournit l'identité du
+compte ; X est une *connexion de publication* que l'on rattache ensuite depuis
+les paramètres. On peut donc avoir un compte, une offre et des brouillons
+avant même d'avoir relié X.
+
+**Facturation.** Le paiement ouvre une session Stripe Checkout en mode
+abonnement. Les webhooks synchronisent l'offre, le statut, le cycle et
+l'échéance vers l'espace de travail, et réattribuent le quota lors d'un
+changement d'offre ou d'un renouvellement — jamais deux fois pour la même
+transition, puisque chaque événement n'est traité qu'une fois. Une
+résiliation ou un impayé ramène l'espace à l'offre d'entrée.
+
 ## Modes dégradés
 
 L'application tourne de bout en bout sans aucun service externe :
 
-| Service manquant       | Comportement                                                    |
-| ---------------------- | --------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY`    | brouillons dérivés localement de l'entrée source                 |
-| `X_CLIENT_ID/SECRET`   | connexion de démonstration, publications simulées et enregistrées |
+| Service manquant       | Comportement                                                      |
+| ---------------------- | ----------------------------------------------------------------- |
+| Google                 | la page Commencer ouvre un compte de démonstration                 |
+| Stripe                 | offres et quotas exerçables, sans encaissement                     |
+| Anthropic              | brouillons dérivés localement de l'entrée source                   |
+| X                      | publications simulées puis enregistrées                            |
 
 Dans les deux cas, un bandeau l'indique sur le tableau de bord. Copiez
 `.env.example` vers `.env.local` pour activer les services réels.
@@ -177,7 +248,9 @@ src/
   server/
     db.ts         schéma SQLite et ouverture
     auth.ts       sessions par cookie, espaces de travail
-    x-oauth.ts    OAuth 2.0 X avec PKCE
+    google-oauth.ts OAuth 2.0 Google avec PKCE (identité du compte)
+    x-oauth.ts    OAuth 2.0 X avec PKCE (connexion de publication)
+    stripe.ts     catalogue, Checkout, portail, synchronisation d'abonnement
     x-api.ts      client X API v2 (+ mode simulation)
     rss.ts        parsing RSS/Atom et ingestion dédupliquée
     ai.ts         génération des brouillons, coach de créneau
@@ -219,8 +292,6 @@ Le dégradé de marque (`--brand-gradient`, utilitaires `.bg-brand` et
 - Le contenu des pages `/termes` et `/confidentialite` est rédigé à partir du
   fonctionnement décrit sur le site : à faire relire par un juriste avant mise
   en ligne.
-- La facturation Paddle n'est pas branchée : l'offre se change dans
-  *Paramètres*, ce qui permet d'exercer les quotas sans passerelle de paiement.
 - `/api/cron/tick` doit être appelé par un ordonnanceur (cron Vercel ou tâche
   planifiée) pour que le pilotage automatique et la publication différée
   s'exécutent sans intervention.

@@ -12,6 +12,7 @@ const NAV = [
   { href: "/app/brouillons", label: "Brouillons" },
   { href: "/app/planificateur", label: "Planificateur" },
   { href: "/app/analyses", label: "Analyses" },
+  { href: "/app/facturation", label: "Facturation" },
   { href: "/app/parametres", label: "Paramètres" },
 ];
 
@@ -88,7 +89,9 @@ export function AppShell({
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="truncate text-[13px] font-medium">{user.name}</p>
-              <p className="truncate font-mono text-[11px] text-faint">@{user.handle}</p>
+              <p className="truncate font-mono text-[11px] text-faint">
+                {user.email ?? "compte local"}
+              </p>
             </div>
             <ActionForm action={logout}>
               <SubmitButton variant="secondary" className="h-8 px-3 text-[12px]">

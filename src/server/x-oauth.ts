@@ -37,7 +37,7 @@ export async function beginAuthorization() {
   const verifier = base64url(crypto.getRandomValues(new Uint8Array(48)));
 
   db()
-    .prepare(`INSERT INTO oauth_states (state, code_verifier, created_at) VALUES (?, ?, ?)`)
+    .prepare(`INSERT INTO oauth_states (state, provider, code_verifier, created_at) VALUES (?, 'x', ?, ?)`)
     .run(state, verifier, now());
 
   const params = new URLSearchParams({
@@ -53,10 +53,11 @@ export async function beginAuthorization() {
   return `${AUTHORIZE_URL}?${params}`;
 }
 
-export function consumeState(state: string) {
+/** Consomme un état d'autorisation : à usage unique, et lié à son fournisseur. */
+export function consumeState(state: string, provider: "x" | "google" = "x") {
   const row = db()
-    .prepare(`SELECT code_verifier FROM oauth_states WHERE state = ?`)
-    .get(state) as { code_verifier: string } | undefined;
+    .prepare(`SELECT code_verifier FROM oauth_states WHERE state = ? AND provider = ?`)
+    .get(state, provider) as { code_verifier: string } | undefined;
 
   if (row) db().prepare(`DELETE FROM oauth_states WHERE state = ?`).run(state);
   return row?.code_verifier ?? null;

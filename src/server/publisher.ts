@@ -2,7 +2,7 @@ import { db, uid, now } from "./db";
 import { computeCost, debit, refund } from "./credits";
 import { publishPost, fetchMetrics } from "./x-api";
 import { plan } from "./plans";
-import type { Draft, User, Workspace } from "./types";
+import type { Draft, Workspace, XConnection } from "./types";
 
 const MAX_ATTEMPTS = 3;
 
@@ -12,7 +12,7 @@ const MAX_ATTEMPTS = 3;
  * publication réussie, conformément à la règle annoncée.
  */
 export async function publishDraft(
-  user: User,
+  connection: XConnection | null,
   workspace: Workspace,
   draft: Draft,
 ): Promise<{ ok: boolean; message: string }> {
@@ -36,7 +36,7 @@ export async function publishDraft(
     )
     .run(cost, now(), draft.id);
 
-  const result = await publishPost(user, draft.content);
+  const result = await publishPost(connection, draft.content);
 
   if (result.ok) {
     db()
@@ -76,9 +76,8 @@ export async function publishDraft(
 export async function runDueDrafts(): Promise<{ processed: number; published: number }> {
   const due = db()
     .prepare(
-      `SELECT d.*, u.id AS _user_id FROM drafts d
+      `SELECT d.*, w.user_id AS _user_id FROM drafts d
        JOIN workspaces w ON w.id = d.workspace_id
-       JOIN users u ON u.id = w.user_id
        WHERE d.status = 'scheduled' AND d.scheduled_at IS NOT NULL AND d.scheduled_at <= ?
        ORDER BY d.scheduled_at ASC LIMIT 25`,
     )
@@ -87,12 +86,14 @@ export async function runDueDrafts(): Promise<{ processed: number; published: nu
   let published = 0;
 
   for (const row of due) {
-    const user = db().prepare(`SELECT * FROM users WHERE id = ?`).get(row._user_id) as User;
+    const connection = db()
+      .prepare(`SELECT * FROM x_connections WHERE user_id = ?`)
+      .get(row._user_id) as XConnection | undefined;
     const workspace = db()
       .prepare(`SELECT * FROM workspaces WHERE id = ?`)
       .get(row.workspace_id) as Workspace;
 
-    const result = await publishDraft(user, workspace, row);
+    const result = await publishDraft(connection ?? null, workspace, row);
     if (result.ok) published += 1;
   }
 
@@ -103,7 +104,7 @@ export async function runDueDrafts(): Promise<{ processed: number; published: nu
  * Rafraîchit les métriques des publications diffusées, dans la limite de
  * l'échantillon et de la cadence propres à l'offre.
  */
-export async function refreshMetrics(user: User, workspace: Workspace) {
+export async function refreshMetrics(connection: XConnection | null, workspace: Workspace) {
   const settings = plan(workspace.plan);
 
   const posts = db()
@@ -125,7 +126,7 @@ export async function refreshMetrics(user: User, workspace: Workspace) {
   if (stale.length === 0) return { refreshed: 0 };
 
   const metrics = await fetchMetrics(
-    user,
+    connection,
     stale.map((post) => post.x_post_id),
   );
 

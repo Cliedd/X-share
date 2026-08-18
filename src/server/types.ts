@@ -12,7 +12,17 @@ export type DraftStatus =
 
 export type User = {
   id: string;
-  x_user_id: string | null;
+  email: string | null;
+  google_id: string | null;
+  name: string;
+  avatar_url: string | null;
+  created_at: number;
+};
+
+/** Connexion de publication X, séparée de l'identité du compte. */
+export type XConnection = {
+  user_id: string;
+  x_user_id: string;
   handle: string;
   name: string;
   avatar_url: string | null;
@@ -21,6 +31,16 @@ export type User = {
   token_expires_at: number | null;
   created_at: number;
 };
+
+export type SubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "incomplete"
+  | "unpaid";
+
+export type BillingInterval = "month" | "year";
 
 export type Workspace = {
   id: string;
@@ -35,6 +55,12 @@ export type Workspace = {
   product_context: string | null;
   timezone: string;
   created_at: number;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  subscription_status: SubscriptionStatus | null;
+  billing_interval: BillingInterval | null;
+  current_period_end: number | null;
+  cancel_at_period_end: number;
 };
 
 export type Connector = {

@@ -1,28 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { upsertXUser, createSession, setSessionCookie } from "@/server/auth";
+import { demoUser, createSession, setSessionCookie } from "@/server/auth";
+import { googleConfig } from "@/server/google-oauth";
 
 export const runtime = "nodejs";
 
 /**
- * Connexion de démonstration : disponible uniquement lorsque les identifiants
- * X ne sont pas configurés, pour que l'application soit exerçable de bout en
- * bout sans compte développeur.
+ * Connexion de démonstration : disponible uniquement tant que Google n'est
+ * pas configuré, pour que l'application soit exerçable sans fournisseur.
  */
 export async function GET(request: NextRequest) {
-  if (process.env.X_CLIENT_ID && process.env.X_CLIENT_SECRET) {
-    return NextResponse.redirect(new URL("/api/auth/x/login", request.url));
+  if (googleConfig().configured) {
+    return NextResponse.redirect(new URL("/api/auth/google/login", request.url));
   }
 
-  const user = upsertXUser({
-    xUserId: "demo-workspace",
-    handle: "fondateur",
-    name: "Compte de démonstration",
-    avatarUrl: null,
-    accessToken: null,
-    refreshToken: null,
-    expiresAt: null,
-  });
-
+  const user = demoUser();
   await setSessionCookie(createSession(user.id));
   return NextResponse.redirect(new URL("/app", request.url));
 }

@@ -1,7 +1,7 @@
 /**
  * Contenu des pages légales.
  * Rédigé à partir du fonctionnement décrit sur le site (crédits, connecteurs,
- * facturation Paddle, API X) — à faire relire par un juriste avant mise en ligne.
+ * facturation Stripe, API X) — à faire relire par un juriste avant mise en ligne.
  */
 
 export const terms = {
@@ -36,7 +36,7 @@ export const terms = {
       heading: "Abonnements et facturation",
       paragraphs: [
         "Les abonnements sont renouvelés mensuellement ou annuellement, sauf annulation. Vous pouvez annuler à tout moment ; l'accès reste actif jusqu'au terme de la période en cours.",
-        "Paddle agit comme revendeur officiel et se charge du traitement des paiements, des factures, des taxes et du portail client.",
+        "Stripe assure le traitement des paiements, l'émission des factures, le calcul des taxes et le portail de gestion de l'abonnement.",
         "Les offres Démarreur et Pro incluent un essai gratuit de 7 jours assorti de 25 crédits. L'offre Élite est souscrite directement sans période d'essai.",
       ],
     },
@@ -95,7 +95,7 @@ export const privacy = {
     {
       heading: "Sous-traitants",
       paragraphs: [
-        "Paddle traite les paiements, les factures et les taxes ; les données bancaires ne transitent jamais par nos serveurs.",
+        "Stripe traite les paiements, les factures et les taxes ; les données bancaires ne transitent jamais par nos serveurs.",
         "Des fournisseurs d'hébergement et de modèles de langage interviennent pour l'exécution du service. Ils sont liés par des engagements contractuels de confidentialité et n'utilisent pas vos contenus à d'autres fins.",
       ],
     },

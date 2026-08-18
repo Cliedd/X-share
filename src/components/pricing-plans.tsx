@@ -119,7 +119,7 @@ function PlanCard({ plan, cycle }: { plan: Plan; cycle: Cycle }) {
         <p className="mt-2 text-[12.5px] text-faint">{plan.cancel}</p>
 
         <ButtonLink
-          href={plan.cta.href}
+          href={`/api/stripe/checkout?offre=${plan.id}&cycle=${annual ? "year" : "month"}`}
           size="lg"
           variant={plan.recommended ? "primary" : "secondary"}
           className="mt-6 w-full"

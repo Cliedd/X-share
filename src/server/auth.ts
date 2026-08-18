@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { db, uid, now } from "./db";
-import type { User, Workspace } from "./types";
+import type { User, Workspace, XConnection } from "./types";
 import { ensureCreditCycle } from "./credits";
 import { plan } from "./plans";
 
@@ -48,7 +48,140 @@ export async function currentUser(): Promise<User | null> {
   return row ?? null;
 }
 
-/** Chaque utilisateur possède un espace de travail ; il est créé à la volée. */
+/* ------------------------------- Identité -------------------------------- */
+
+/**
+ * Crée ou retrouve le compte associé à une identité Google.
+ * Un compte préexistant portant la même adresse est rattaché plutôt que
+ * dupliqué, pour qu'une même personne n'ait jamais deux espaces.
+ */
+export function upsertGoogleUser(profile: {
+  googleId: string;
+  email: string | null;
+  name: string;
+  avatarUrl: string | null;
+}): User {
+  const byGoogle = db()
+    .prepare(`SELECT * FROM users WHERE google_id = ?`)
+    .get(profile.googleId) as User | undefined;
+
+  if (byGoogle) {
+    db()
+      .prepare(`UPDATE users SET name = ?, avatar_url = ?, email = ? WHERE id = ?`)
+      .run(profile.name, profile.avatarUrl, profile.email, byGoogle.id);
+    return { ...byGoogle, ...profile, id: byGoogle.id } as User;
+  }
+
+  const byEmail = profile.email
+    ? (db().prepare(`SELECT * FROM users WHERE email = ?`).get(profile.email) as User | undefined)
+    : undefined;
+
+  if (byEmail) {
+    db()
+      .prepare(`UPDATE users SET google_id = ?, name = ?, avatar_url = ? WHERE id = ?`)
+      .run(profile.googleId, profile.name, profile.avatarUrl, byEmail.id);
+    return { ...byEmail, google_id: profile.googleId };
+  }
+
+  const user: User = {
+    id: uid("usr"),
+    email: profile.email,
+    google_id: profile.googleId,
+    name: profile.name,
+    avatar_url: profile.avatarUrl,
+    created_at: now(),
+  };
+
+  db()
+    .prepare(
+      `INSERT INTO users (id, email, google_id, name, avatar_url, created_at)
+       VALUES (@id, @email, @google_id, @name, @avatar_url, @created_at)`,
+    )
+    .run(user);
+
+  return user;
+}
+
+/** Compte de démonstration, utilisé quand aucun fournisseur n'est configuré. */
+export function demoUser(): User {
+  const existing = db()
+    .prepare(`SELECT * FROM users WHERE email = ?`)
+    .get("demo@cliedd.app") as User | undefined;
+
+  if (existing) return existing;
+
+  const user: User = {
+    id: uid("usr"),
+    email: "demo@cliedd.app",
+    google_id: null,
+    name: "Compte de démonstration",
+    avatar_url: null,
+    created_at: now(),
+  };
+
+  db()
+    .prepare(
+      `INSERT INTO users (id, email, google_id, name, avatar_url, created_at)
+       VALUES (@id, @email, @google_id, @name, @avatar_url, @created_at)`,
+    )
+    .run(user);
+
+  return user;
+}
+
+/* --------------------------- Connexion X (publication) -------------------- */
+
+export function xConnection(userId: string): XConnection | null {
+  return (
+    (db()
+      .prepare(`SELECT * FROM x_connections WHERE user_id = ?`)
+      .get(userId) as XConnection | undefined) ?? null
+  );
+}
+
+export function linkXAccount(
+  userId: string,
+  profile: {
+    xUserId: string;
+    handle: string;
+    name: string;
+    avatarUrl: string | null;
+    accessToken: string | null;
+    refreshToken: string | null;
+    expiresAt: number | null;
+  },
+) {
+  db()
+    .prepare(
+      `INSERT INTO x_connections (user_id, x_user_id, handle, name, avatar_url,
+        access_token, refresh_token, token_expires_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET
+         x_user_id = excluded.x_user_id, handle = excluded.handle,
+         name = excluded.name, avatar_url = excluded.avatar_url,
+         access_token = excluded.access_token,
+         refresh_token = excluded.refresh_token,
+         token_expires_at = excluded.token_expires_at`,
+    )
+    .run(
+      userId,
+      profile.xUserId,
+      profile.handle,
+      profile.name,
+      profile.avatarUrl,
+      profile.accessToken,
+      profile.refreshToken,
+      profile.expiresAt,
+      now(),
+    );
+}
+
+export function unlinkXAccount(userId: string) {
+  db().prepare(`DELETE FROM x_connections WHERE user_id = ?`).run(userId);
+}
+
+/* ------------------------------ Espace de travail ------------------------- */
+
 export function workspaceFor(user: User): Workspace {
   const existing = db()
     .prepare(`SELECT * FROM workspaces WHERE user_id = ? LIMIT 1`)
@@ -70,14 +203,24 @@ export function workspaceFor(user: User): Workspace {
     product_context: null,
     timezone: "Europe/Paris",
     created_at: now(),
+    stripe_customer_id: null,
+    stripe_subscription_id: null,
+    subscription_status: null,
+    billing_interval: null,
+    current_period_end: null,
+    cancel_at_period_end: 0,
   };
 
   db()
     .prepare(
       `INSERT INTO workspaces (id, user_id, name, plan, credits_remaining, credits_reset_at,
-        trial_ends_at, framework, custom_prompt, product_context, timezone, created_at)
+        trial_ends_at, framework, custom_prompt, product_context, timezone, created_at,
+        stripe_customer_id, stripe_subscription_id, subscription_status, billing_interval,
+        current_period_end, cancel_at_period_end)
        VALUES (@id, @user_id, @name, @plan, @credits_remaining, @credits_reset_at,
-        @trial_ends_at, @framework, @custom_prompt, @product_context, @timezone, @created_at)`,
+        @trial_ends_at, @framework, @custom_prompt, @product_context, @timezone, @created_at,
+        @stripe_customer_id, @stripe_subscription_id, @subscription_status, @billing_interval,
+        @current_period_end, @cancel_at_period_end)`,
     )
     .run(workspace);
 
@@ -88,60 +231,5 @@ export function workspaceFor(user: User): Workspace {
 export async function requireSession() {
   const user = await currentUser();
   if (!user) return null;
-  return { user, workspace: workspaceFor(user) };
-}
-
-export function upsertXUser(profile: {
-  xUserId: string;
-  handle: string;
-  name: string;
-  avatarUrl: string | null;
-  accessToken: string | null;
-  refreshToken: string | null;
-  expiresAt: number | null;
-}): User {
-  const existing = db()
-    .prepare(`SELECT * FROM users WHERE x_user_id = ?`)
-    .get(profile.xUserId) as User | undefined;
-
-  if (existing) {
-    db()
-      .prepare(
-        `UPDATE users SET handle = ?, name = ?, avatar_url = ?, access_token = ?,
-          refresh_token = ?, token_expires_at = ? WHERE id = ?`,
-      )
-      .run(
-        profile.handle,
-        profile.name,
-        profile.avatarUrl,
-        profile.accessToken,
-        profile.refreshToken,
-        profile.expiresAt,
-        existing.id,
-      );
-    return { ...existing, ...profile, id: existing.id } as User;
-  }
-
-  const user: User = {
-    id: uid("usr"),
-    x_user_id: profile.xUserId,
-    handle: profile.handle,
-    name: profile.name,
-    avatar_url: profile.avatarUrl,
-    access_token: profile.accessToken,
-    refresh_token: profile.refreshToken,
-    token_expires_at: profile.expiresAt,
-    created_at: now(),
-  };
-
-  db()
-    .prepare(
-      `INSERT INTO users (id, x_user_id, handle, name, avatar_url, access_token,
-        refresh_token, token_expires_at, created_at)
-       VALUES (@id, @x_user_id, @handle, @name, @avatar_url, @access_token,
-        @refresh_token, @token_expires_at, @created_at)`,
-    )
-    .run(user);
-
-  return user;
+  return { user, workspace: workspaceFor(user), x: xConnection(user.id) };
 }
