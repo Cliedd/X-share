@@ -22,7 +22,7 @@ export function LegalPage({
       <section className="relative overflow-hidden border-b border-[var(--line)]">
         <div className="aurora" aria-hidden="true" />
         <Container className="relative z-10 py-16 sm:py-20">
-          <div className="flex max-w-2xl flex-col gap-5">
+          <div className="flex max-w-2xl flex-col items-start gap-5">
             <Eyebrow>{eyebrow}</Eyebrow>
             <h1 className="text-[2rem] leading-[1.12] font-semibold sm:text-[2.75rem]">{title}</h1>
             <p className="text-[15px] leading-relaxed text-muted sm:text-base">{intro}</p>
