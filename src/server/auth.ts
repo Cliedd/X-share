@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
-import { db, uid, now } from "./db";
+import { one, run, uid, now } from "./db";
+import { ensureSchema } from "./migrate";
 import type { User, Workspace, XConnection } from "./types";
 import { ensureCreditCycle } from "./credits";
 import { plan } from "./plans";
@@ -7,11 +8,14 @@ import { plan } from "./plans";
 const SESSION_COOKIE = "cliedd_session";
 const SESSION_TTL = 30 * 24 * 60 * 60 * 1000;
 
-export function createSession(userId: string) {
+export async function createSession(userId: string) {
   const id = uid("ses");
-  db()
-    .prepare(`INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)`)
-    .run(id, userId, now() + SESSION_TTL, now());
+  await run(`INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)`, [
+    id,
+    userId,
+    now() + SESSION_TTL,
+    now(),
+  ]);
   return id;
 }
 
@@ -29,7 +33,7 @@ export async function setSessionCookie(sessionId: string) {
 export async function clearSession() {
   const store = await cookies();
   const id = store.get(SESSION_COOKIE)?.value;
-  if (id) db().prepare(`DELETE FROM sessions WHERE id = ?`).run(id);
+  if (id) await run(`DELETE FROM sessions WHERE id = ?`, [id]);
   store.delete(SESSION_COOKIE);
 }
 
@@ -38,14 +42,11 @@ export async function currentUser(): Promise<User | null> {
   const id = store.get(SESSION_COOKIE)?.value;
   if (!id) return null;
 
-  const row = db()
-    .prepare(
-      `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
-       WHERE s.id = ? AND s.expires_at > ?`,
-    )
-    .get(id, now()) as User | undefined;
-
-  return row ?? null;
+  return one<User>(
+    `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
+     WHERE s.id = ? AND s.expires_at > ?`,
+    [id, now()],
+  );
 }
 
 /* ------------------------------- Identité -------------------------------- */
@@ -55,31 +56,36 @@ export async function currentUser(): Promise<User | null> {
  * Un compte préexistant portant la même adresse est rattaché plutôt que
  * dupliqué, pour qu'une même personne n'ait jamais deux espaces.
  */
-export function upsertGoogleUser(profile: {
+export async function upsertGoogleUser(profile: {
   googleId: string;
   email: string | null;
   name: string;
   avatarUrl: string | null;
-}): User {
-  const byGoogle = db()
-    .prepare(`SELECT * FROM users WHERE google_id = ?`)
-    .get(profile.googleId) as User | undefined;
+}): Promise<User> {
+  await ensureSchema();
 
+  const byGoogle = await one<User>(`SELECT * FROM users WHERE google_id = ?`, [profile.googleId]);
   if (byGoogle) {
-    db()
-      .prepare(`UPDATE users SET name = ?, avatar_url = ?, email = ? WHERE id = ?`)
-      .run(profile.name, profile.avatarUrl, profile.email, byGoogle.id);
-    return { ...byGoogle, ...profile, id: byGoogle.id } as User;
+    await run(`UPDATE users SET name = ?, avatar_url = ?, email = ? WHERE id = ?`, [
+      profile.name,
+      profile.avatarUrl,
+      profile.email,
+      byGoogle.id,
+    ]);
+    return { ...byGoogle, name: profile.name, avatar_url: profile.avatarUrl, email: profile.email };
   }
 
   const byEmail = profile.email
-    ? (db().prepare(`SELECT * FROM users WHERE email = ?`).get(profile.email) as User | undefined)
-    : undefined;
+    ? await one<User>(`SELECT * FROM users WHERE email = ?`, [profile.email])
+    : null;
 
   if (byEmail) {
-    db()
-      .prepare(`UPDATE users SET google_id = ?, name = ?, avatar_url = ? WHERE id = ?`)
-      .run(profile.googleId, profile.name, profile.avatarUrl, byEmail.id);
+    await run(`UPDATE users SET google_id = ?, name = ?, avatar_url = ? WHERE id = ?`, [
+      profile.googleId,
+      profile.name,
+      profile.avatarUrl,
+      byEmail.id,
+    ]);
     return { ...byEmail, google_id: profile.googleId };
   }
 
@@ -92,22 +98,20 @@ export function upsertGoogleUser(profile: {
     created_at: now(),
   };
 
-  db()
-    .prepare(
-      `INSERT INTO users (id, email, google_id, name, avatar_url, created_at)
-       VALUES (@id, @email, @google_id, @name, @avatar_url, @created_at)`,
-    )
-    .run(user);
+  await run(
+    `INSERT INTO users (id, email, google_id, name, avatar_url, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [user.id, user.email, user.google_id, user.name, user.avatar_url, user.created_at],
+  );
 
   return user;
 }
 
 /** Compte de démonstration, utilisé quand aucun fournisseur n'est configuré. */
-export function demoUser(): User {
-  const existing = db()
-    .prepare(`SELECT * FROM users WHERE email = ?`)
-    .get("demo@cliedd.app") as User | undefined;
+export async function demoUser(): Promise<User> {
+  await ensureSchema();
 
+  const existing = await one<User>(`SELECT * FROM users WHERE email = ?`, ["demo@cliedd.app"]);
   if (existing) return existing;
 
   const user: User = {
@@ -119,27 +123,22 @@ export function demoUser(): User {
     created_at: now(),
   };
 
-  db()
-    .prepare(
-      `INSERT INTO users (id, email, google_id, name, avatar_url, created_at)
-       VALUES (@id, @email, @google_id, @name, @avatar_url, @created_at)`,
-    )
-    .run(user);
+  await run(
+    `INSERT INTO users (id, email, google_id, name, avatar_url, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [user.id, user.email, user.google_id, user.name, user.avatar_url, user.created_at],
+  );
 
   return user;
 }
 
 /* --------------------------- Connexion X (publication) -------------------- */
 
-export function xConnection(userId: string): XConnection | null {
-  return (
-    (db()
-      .prepare(`SELECT * FROM x_connections WHERE user_id = ?`)
-      .get(userId) as XConnection | undefined) ?? null
-  );
+export function xConnection(userId: string) {
+  return one<XConnection>(`SELECT * FROM x_connections WHERE user_id = ?`, [userId]);
 }
 
-export function linkXAccount(
+export async function linkXAccount(
   userId: string,
   profile: {
     xUserId: string;
@@ -151,19 +150,17 @@ export function linkXAccount(
     expiresAt: number | null;
   },
 ) {
-  db()
-    .prepare(
-      `INSERT INTO x_connections (user_id, x_user_id, handle, name, avatar_url,
-        access_token, refresh_token, token_expires_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(user_id) DO UPDATE SET
-         x_user_id = excluded.x_user_id, handle = excluded.handle,
-         name = excluded.name, avatar_url = excluded.avatar_url,
-         access_token = excluded.access_token,
-         refresh_token = excluded.refresh_token,
-         token_expires_at = excluded.token_expires_at`,
-    )
-    .run(
+  await run(
+    `INSERT INTO x_connections (user_id, x_user_id, handle, name, avatar_url,
+      access_token, refresh_token, token_expires_at, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (user_id) DO UPDATE SET
+       x_user_id = EXCLUDED.x_user_id, handle = EXCLUDED.handle,
+       name = EXCLUDED.name, avatar_url = EXCLUDED.avatar_url,
+       access_token = EXCLUDED.access_token,
+       refresh_token = EXCLUDED.refresh_token,
+       token_expires_at = EXCLUDED.token_expires_at`,
+    [
       userId,
       profile.xUserId,
       profile.handle,
@@ -173,19 +170,20 @@ export function linkXAccount(
       profile.refreshToken,
       profile.expiresAt,
       now(),
-    );
+    ],
+  );
 }
 
-export function unlinkXAccount(userId: string) {
-  db().prepare(`DELETE FROM x_connections WHERE user_id = ?`).run(userId);
+export async function unlinkXAccount(userId: string) {
+  await run(`DELETE FROM x_connections WHERE user_id = ?`, [userId]);
 }
 
 /* ------------------------------ Espace de travail ------------------------- */
 
-export function workspaceFor(user: User): Workspace {
-  const existing = db()
-    .prepare(`SELECT * FROM workspaces WHERE user_id = ? LIMIT 1`)
-    .get(user.id) as Workspace | undefined;
+export async function workspaceFor(user: User): Promise<Workspace> {
+  const existing = await one<Workspace>(`SELECT * FROM workspaces WHERE user_id = ? LIMIT 1`, [
+    user.id,
+  ]);
 
   if (existing) return ensureCreditCycle(existing);
 
@@ -211,25 +209,32 @@ export function workspaceFor(user: User): Workspace {
     cancel_at_period_end: 0,
   };
 
-  db()
-    .prepare(
-      `INSERT INTO workspaces (id, user_id, name, plan, credits_remaining, credits_reset_at,
-        trial_ends_at, framework, custom_prompt, product_context, timezone, created_at,
-        stripe_customer_id, stripe_subscription_id, subscription_status, billing_interval,
-        current_period_end, cancel_at_period_end)
-       VALUES (@id, @user_id, @name, @plan, @credits_remaining, @credits_reset_at,
-        @trial_ends_at, @framework, @custom_prompt, @product_context, @timezone, @created_at,
-        @stripe_customer_id, @stripe_subscription_id, @subscription_status, @billing_interval,
-        @current_period_end, @cancel_at_period_end)`,
-    )
-    .run(workspace);
+  await run(
+    `INSERT INTO workspaces (id, user_id, name, plan, credits_remaining, credits_reset_at,
+      trial_ends_at, framework, custom_prompt, product_context, timezone, created_at,
+      stripe_customer_id, stripe_subscription_id, subscription_status, billing_interval,
+      current_period_end, cancel_at_period_end)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      workspace.id, workspace.user_id, workspace.name, workspace.plan,
+      workspace.credits_remaining, workspace.credits_reset_at, workspace.trial_ends_at,
+      workspace.framework, workspace.custom_prompt, workspace.product_context,
+      workspace.timezone, workspace.created_at, workspace.stripe_customer_id,
+      workspace.stripe_subscription_id, workspace.subscription_status,
+      workspace.billing_interval, workspace.current_period_end,
+      workspace.cancel_at_period_end,
+    ],
+  );
 
   return workspace;
 }
 
 /** Contexte exigé par les pages et routes protégées. */
 export async function requireSession() {
+  await ensureSchema();
   const user = await currentUser();
   if (!user) return null;
-  return { user, workspace: workspaceFor(user), x: xConnection(user.id) };
+
+  const [workspace, x] = await Promise.all([workspaceFor(user), xConnection(user.id)]);
+  return { user, workspace, x };
 }

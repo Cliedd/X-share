@@ -1,4 +1,4 @@
-import { db, uid, now } from "./db";
+import { one, run, uid, now, type Tx } from "./db";
 import type { MediaKind, Workspace } from "./types";
 import { plan } from "./plans";
 
@@ -9,10 +9,9 @@ import { plan } from "./plans";
  */
 export const COST = { text: 1, image: 2, video: 4, link: 10 } as const;
 
-const URL_PATTERN = /https?:\/\/[^\s<>"]+/gi;
+const URL_PATTERN = /https?:\/\/[^\s<>"]+/i;
 
 export function containsLink(content: string) {
-  URL_PATTERN.lastIndex = 0;
   return URL_PATTERN.test(content);
 }
 
@@ -25,13 +24,19 @@ export function computeCost(content: string, media: MediaKind = "none") {
   return cost;
 }
 
-export function ledger(workspaceId: string, delta: number, reason: string, draftId?: string) {
-  db()
-    .prepare(
-      `INSERT INTO credit_ledger (id, workspace_id, delta, reason, draft_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    )
-    .run(uid("led"), workspaceId, delta, reason, draftId ?? null, now());
+export async function ledger(
+  workspaceId: string,
+  delta: number,
+  reason: string,
+  draftId?: string,
+  tx?: Tx,
+) {
+  const exec = tx?.run ?? run;
+  await exec(
+    `INSERT INTO credit_ledger (id, workspace_id, delta, reason, draft_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [uid("led"), workspaceId, delta, reason, draftId ?? null, now()],
+  );
 }
 
 /**
@@ -39,38 +44,60 @@ export function ledger(workspaceId: string, delta: number, reason: string, draft
  * le solde est suffisant, ce qui évite qu'une publication concurrente ne
  * fasse passer le compteur sous zéro.
  */
-export function debit(workspaceId: string, amount: number, reason: string, draftId?: string) {
-  const result = db()
-    .prepare(
-      `UPDATE workspaces SET credits_remaining = credits_remaining - ?
-       WHERE id = ? AND credits_remaining >= ?`,
-    )
-    .run(amount, workspaceId, amount);
+export async function debit(
+  workspaceId: string,
+  amount: number,
+  reason: string,
+  draftId?: string,
+) {
+  const changed = await run(
+    `UPDATE workspaces SET credits_remaining = credits_remaining - ?
+     WHERE id = ? AND credits_remaining >= ?`,
+    [amount, workspaceId, amount],
+  );
 
-  if (result.changes === 0) return false;
-  ledger(workspaceId, -amount, reason, draftId);
+  if (changed === 0) return false;
+  await ledger(workspaceId, -amount, reason, draftId);
   return true;
 }
 
 /** Recrédite — utilisé quand une publication échoue. */
-export function refund(workspaceId: string, amount: number, reason: string, draftId?: string) {
-  db()
-    .prepare(`UPDATE workspaces SET credits_remaining = credits_remaining + ? WHERE id = ?`)
-    .run(amount, workspaceId);
-  ledger(workspaceId, amount, reason, draftId);
+export async function refund(
+  workspaceId: string,
+  amount: number,
+  reason: string,
+  draftId?: string,
+) {
+  await run(`UPDATE workspaces SET credits_remaining = credits_remaining + ? WHERE id = ?`, [
+    amount,
+    workspaceId,
+  ]);
+  await ledger(workspaceId, amount, reason, draftId);
 }
 
-/** Réinitialise le quota mensuel si la date de renouvellement est passée. */
-export function ensureCreditCycle(workspace: Workspace): Workspace {
-  if (workspace.credits_reset_at > now()) return workspace;
+/**
+ * Réinitialise le quota mensuel si la date de renouvellement est passée.
+ * La condition est portée par la requête elle-même : deux requêtes
+ * simultanées ne peuvent pas créditer deux fois.
+ */
+export async function ensureCreditCycle(workspace: Workspace): Promise<Workspace> {
+  if (Number(workspace.credits_reset_at) > now()) return workspace;
 
   const monthly = plan(workspace.plan).monthlyCredits;
   const nextReset = now() + 30 * 24 * 60 * 60 * 1000;
 
-  db()
-    .prepare(`UPDATE workspaces SET credits_remaining = ?, credits_reset_at = ? WHERE id = ?`)
-    .run(monthly, nextReset, workspace.id);
-  ledger(workspace.id, monthly, "Renouvellement mensuel du quota");
+  const changed = await run(
+    `UPDATE workspaces SET credits_remaining = ?, credits_reset_at = ?
+     WHERE id = ? AND credits_reset_at <= ?`,
+    [monthly, nextReset, workspace.id, now()],
+  );
 
+  if (changed === 0) {
+    // Une autre requête a déjà renouvelé : on relit l'état à jour.
+    const fresh = await one<Workspace>(`SELECT * FROM workspaces WHERE id = ?`, [workspace.id]);
+    return fresh ?? workspace;
+  }
+
+  await ledger(workspace.id, monthly, "Renouvellement mensuel du quota");
   return { ...workspace, credits_remaining: monthly, credits_reset_at: nextReset };
 }

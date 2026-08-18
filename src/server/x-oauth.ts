@@ -1,4 +1,4 @@
-import { db, now } from "./db";
+import { one, run, now } from "./db";
 
 /**
  * OAuth 2.0 X avec PKCE.
@@ -36,9 +36,10 @@ export async function beginAuthorization() {
   const state = base64url(crypto.getRandomValues(new Uint8Array(24)));
   const verifier = base64url(crypto.getRandomValues(new Uint8Array(48)));
 
-  db()
-    .prepare(`INSERT INTO oauth_states (state, provider, code_verifier, created_at) VALUES (?, 'x', ?, ?)`)
-    .run(state, verifier, now());
+  await run(
+    `INSERT INTO oauth_states (state, provider, code_verifier, created_at) VALUES (?, 'x', ?, ?)`,
+    [state, verifier, now()],
+  );
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -54,12 +55,13 @@ export async function beginAuthorization() {
 }
 
 /** Consomme un état d'autorisation : à usage unique, et lié à son fournisseur. */
-export function consumeState(state: string, provider: "x" | "google" = "x") {
-  const row = db()
-    .prepare(`SELECT code_verifier FROM oauth_states WHERE state = ? AND provider = ?`)
-    .get(state, provider) as { code_verifier: string } | undefined;
-
-  if (row) db().prepare(`DELETE FROM oauth_states WHERE state = ?`).run(state);
+export async function consumeState(state: string, provider: "x" | "google" = "x") {
+  // La suppression par RETURNING rend la consommation atomique : un même
+  // état ne peut pas être utilisé deux fois.
+  const row = await one<{ code_verifier: string }>(
+    `DELETE FROM oauth_states WHERE state = ? AND provider = ? RETURNING code_verifier`,
+    [state, provider],
+  );
   return row?.code_verifier ?? null;
 }
 

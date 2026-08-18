@@ -14,9 +14,13 @@ export default async function DashboardPage() {
   if (!context) redirect("/commencer");
   const { user, workspace } = context;
 
-  const stats = overview(workspace);
-  const queue = listDrafts(workspace.id, ["scheduled"]).slice(0, 5);
-  const inbox = pendingItems(workspace.id).slice(0, 5);
+  const [stats, allQueue, allInbox] = await Promise.all([
+    overview(workspace),
+    listDrafts(workspace.id, ["scheduled"]),
+    pendingItems(workspace.id),
+  ]);
+  const queue = allQueue.slice(0, 5);
+  const inbox = allInbox.slice(0, 5);
   const settings = plan(workspace.plan);
 
   const tiles = [

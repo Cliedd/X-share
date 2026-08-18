@@ -1,5 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
-import { db, uid, now } from "./db";
+import { query, run, transaction, uid, now } from "./db";
 import type { Connector, SourceItem } from "./types";
 
 /**
@@ -136,49 +136,53 @@ export async function fetchFeed(url: string) {
 export async function ingestConnector(connector: Connector): Promise<SourceItem[]> {
   try {
     const feed = await fetchFeed(connector.url);
-    const insert = db().prepare(
-      `INSERT OR IGNORE INTO source_items
-        (id, connector_id, guid, title, url, summary, published_at, processed, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`,
-    );
 
-    const inserted: string[] = [];
-    const transaction = db().transaction((entries: ParsedEntry[]) => {
-      for (const entry of entries) {
-        const id = uid("itm");
-        const result = insert.run(
-          id,
-          connector.id,
-          entry.guid,
-          entry.title,
-          entry.url,
-          entry.summary,
-          entry.publishedAt,
-          now(),
+    // `ON CONFLICT DO NOTHING` assure la déduplication ; `RETURNING`
+    // n'émet une ligne que pour les entrées réellement insérées.
+    const inserted = await transaction(async (tx) => {
+      const ids: string[] = [];
+      for (const entry of feed.entries) {
+        const rows = await tx.query<{ id: string }>(
+          `INSERT INTO source_items
+            (id, connector_id, guid, title, url, summary, published_at, processed, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+           ON CONFLICT (connector_id, guid) DO NOTHING
+           RETURNING id`,
+          [
+            uid("itm"),
+            connector.id,
+            entry.guid,
+            entry.title,
+            entry.url,
+            entry.summary,
+            entry.publishedAt,
+            now(),
+          ],
         );
-        if (result.changes > 0) inserted.push(id);
+        if (rows[0]) ids.push(rows[0].id);
       }
+      return ids;
     });
-    transaction(feed.entries);
 
-    db()
-      .prepare(`UPDATE connectors SET last_fetched_at = ?, last_error = NULL WHERE id = ?`)
-      .run(now(), connector.id);
+    await run(`UPDATE connectors SET last_fetched_at = ?, last_error = NULL WHERE id = ?`, [
+      now(),
+      connector.id,
+    ]);
 
     if (inserted.length === 0) return [];
 
-    const placeholders = inserted.map(() => "?").join(",");
-    return db()
-      .prepare(
-        `SELECT * FROM source_items WHERE id IN (${placeholders})
-         ORDER BY COALESCE(published_at, created_at) ASC`,
-      )
-      .all(...inserted) as SourceItem[];
+    return query<SourceItem>(
+      `SELECT * FROM source_items WHERE id = ANY(?)
+       ORDER BY COALESCE(published_at, created_at) ASC`,
+      [inserted],
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erreur inconnue";
-    db()
-      .prepare(`UPDATE connectors SET last_fetched_at = ?, last_error = ? WHERE id = ?`)
-      .run(now(), message, connector.id);
+    await run(`UPDATE connectors SET last_fetched_at = ?, last_error = ? WHERE id = ?`, [
+      now(),
+      message,
+      connector.id,
+    ]);
     throw error;
   }
 }

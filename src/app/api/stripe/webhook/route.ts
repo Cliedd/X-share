@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  if (!claimEvent(event.id, event.type)) {
+  if (!(await claimEvent(event.id, event.type))) {
     return NextResponse.json({ received: true, duplicate: true });
   }
 
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
             typeof session.subscription === "string"
               ? session.subscription
               : session.subscription.id;
-          syncSubscription(await stripe().subscriptions.retrieve(id));
+          await syncSubscription(await stripe().subscriptions.retrieve(id));
         }
         break;
       }
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted":
-        syncSubscription(event.data.object);
+        await syncSubscription(event.data.object);
         break;
 
       case "invoice.paid":
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         const subscription = invoice.subscription;
         if (subscription) {
           const id = typeof subscription === "string" ? subscription : subscription.id;
-          syncSubscription(await stripe().subscriptions.retrieve(id));
+          await syncSubscription(await stripe().subscriptions.retrieve(id));
         }
         break;
       }

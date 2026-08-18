@@ -19,9 +19,12 @@ export default async function PlannerPage({
   const offset = Number(params.semaine ?? 0);
   const weekStart = startOfWeek() + (Number.isFinite(offset) ? offset : 0) * WEEK_MS;
 
-  const scheduled = draftsInRange(workspace.id, weekStart, weekStart + WEEK_MS);
-  const queue = listDrafts(workspace.id, ["approved"]);
-  const suggestion = suggestSlot(publishedHistory(workspace.id));
+  const [scheduled, queue, history] = await Promise.all([
+    draftsInRange(workspace.id, weekStart, weekStart + WEEK_MS),
+    listDrafts(workspace.id, ["approved"]),
+    publishedHistory(workspace.id),
+  ]);
+  const suggestion = suggestSlot(history);
 
   const label = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" });
 

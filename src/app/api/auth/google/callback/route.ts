@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/commencer?erreur=parametres", request.url));
   }
 
-  const verifier = consumeState(state, "google");
+  const verifier = await consumeState(state, "google");
   if (!verifier) {
     return NextResponse.redirect(new URL("/commencer?erreur=etat", request.url));
   }
@@ -25,9 +25,9 @@ export async function GET(request: NextRequest) {
   try {
     const token = await exchangeGoogleCode(code, verifier);
     const profile = await fetchGoogleProfile(token.access_token);
-    const user = upsertGoogleUser(profile);
+    const user = await upsertGoogleUser(profile);
 
-    await setSessionCookie(createSession(user.id));
+    await setSessionCookie(await createSession(user.id));
     return NextResponse.redirect(new URL("/app", request.url));
   } catch {
     return NextResponse.redirect(new URL("/commencer?erreur=echange", request.url));

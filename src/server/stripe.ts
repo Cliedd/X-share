@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { db, now } from "./db";
+import { one, run, now } from "./db";
 import { PLANS, plan } from "./plans";
 import { ledger } from "./credits";
 import type { BillingInterval, PlanId, SubscriptionStatus, User, Workspace } from "./types";
@@ -96,9 +96,10 @@ async function ensureCustomer(user: User, workspace: Workspace): Promise<string>
     metadata: { cliedd_workspace: workspace.id, cliedd_user: user.id },
   });
 
-  db()
-    .prepare(`UPDATE workspaces SET stripe_customer_id = ? WHERE id = ?`)
-    .run(customer.id, workspace.id);
+  await run(`UPDATE workspaces SET stripe_customer_id = ? WHERE id = ?`, [
+    customer.id,
+    workspace.id,
+  ]);
 
   return customer.id;
 }
@@ -180,13 +181,14 @@ function planOf(subscription: Stripe.Subscription): PlanId {
  * échéance. Le quota est recalé lors du passage à une offre supérieure ou au
  * renouvellement d'une période.
  */
-export function syncSubscription(subscription: Stripe.Subscription) {
+export async function syncSubscription(subscription: Stripe.Subscription) {
   const customerId =
     typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
 
-  const workspace = db()
-    .prepare(`SELECT * FROM workspaces WHERE stripe_customer_id = ?`)
-    .get(customerId) as Workspace | undefined;
+  const workspace = await one<Workspace>(
+    `SELECT * FROM workspaces WHERE stripe_customer_id = ?`,
+    [customerId],
+  );
 
   if (!workspace) return { updated: false, reason: "espace de travail introuvable" };
 
@@ -204,15 +206,15 @@ export function syncSubscription(subscription: Stripe.Subscription) {
 
   const planChanged = workspace.plan !== effectivePlan;
   const periodChanged =
-    end !== null && (workspace.current_period_end ?? 0) < end && workspace.current_period_end !== null;
+    end !== null &&
+    workspace.current_period_end !== null &&
+    Number(workspace.current_period_end) < end;
 
-  db()
-    .prepare(
-      `UPDATE workspaces SET plan = ?, subscription_status = ?, stripe_subscription_id = ?,
-        billing_interval = ?, current_period_end = ?, cancel_at_period_end = ?
-       WHERE id = ?`,
-    )
-    .run(
+  await run(
+    `UPDATE workspaces SET plan = ?, subscription_status = ?, stripe_subscription_id = ?,
+      billing_interval = ?, current_period_end = ?, cancel_at_period_end = ?
+     WHERE id = ?`,
+    [
       effectivePlan,
       status,
       subscription.id,
@@ -220,15 +222,18 @@ export function syncSubscription(subscription: Stripe.Subscription) {
       end,
       subscription.cancel_at_period_end ? 1 : 0,
       workspace.id,
-    );
+    ],
+  );
 
   // Le quota n'est réattribué que sur un vrai changement, jamais à chaque
   // événement — Stripe en émet plusieurs pour une même transition.
   if (active && (planChanged || periodChanged)) {
-    db()
-      .prepare(`UPDATE workspaces SET credits_remaining = ?, credits_reset_at = ? WHERE id = ?`)
-      .run(quota, end ?? now() + 30 * 24 * 60 * 60 * 1000, workspace.id);
-    ledger(
+    await run(`UPDATE workspaces SET credits_remaining = ?, credits_reset_at = ? WHERE id = ?`, [
+      quota,
+      end ?? now() + 30 * 24 * 60 * 60 * 1000,
+      workspace.id,
+    ]);
+    await ledger(
       workspace.id,
       quota,
       planChanged ? `Passage à l'offre ${plan(effectivePlan).name}` : "Renouvellement de période",
@@ -239,11 +244,13 @@ export function syncSubscription(subscription: Stripe.Subscription) {
 }
 
 /** Marque un événement comme traité ; renvoie faux s'il l'était déjà. */
-export function claimEvent(id: string, type: string) {
-  const result = db()
-    .prepare(`INSERT OR IGNORE INTO stripe_events (id, type, processed_at) VALUES (?, ?, ?)`)
-    .run(id, type, now());
-  return result.changes > 0;
+export async function claimEvent(id: string, type: string) {
+  const changed = await run(
+    `INSERT INTO stripe_events (id, type, processed_at) VALUES (?, ?, ?)
+     ON CONFLICT (id) DO NOTHING`,
+    [id, type, now()],
+  );
+  return changed > 0;
 }
 
 export async function listInvoices(workspace: Workspace) {

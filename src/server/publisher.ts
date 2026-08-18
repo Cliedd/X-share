@@ -1,4 +1,4 @@
-import { db, uid, now } from "./db";
+import { one, query, run, transaction, uid, now } from "./db";
 import { computeCost, debit, refund } from "./credits";
 import { publishPost, fetchMetrics } from "./x-api";
 import { plan } from "./plans";
@@ -22,29 +22,29 @@ export async function publishDraft(
 
   const cost = computeCost(draft.content, draft.media_kind);
 
-  if (!debit(workspace.id, cost, "Publication X", draft.id)) {
-    db()
-      .prepare(`UPDATE drafts SET status = 'failed', error = ?, updated_at = ? WHERE id = ?`)
-      .run(`Crédits insuffisants : ${cost} requis.`, now(), draft.id);
+  if (!(await debit(workspace.id, cost, "Publication X", draft.id))) {
+    await run(`UPDATE drafts SET status = 'failed', error = ?, updated_at = ? WHERE id = ?`, [
+      `Crédits insuffisants : ${cost} requis.`,
+      now(),
+      draft.id,
+    ]);
     return { ok: false, message: `Crédits insuffisants : ${cost} requis.` };
   }
 
-  db()
-    .prepare(
-      `UPDATE drafts SET status = 'publishing', credit_cost = ?, attempts = attempts + 1,
-        updated_at = ? WHERE id = ?`,
-    )
-    .run(cost, now(), draft.id);
+  await run(
+    `UPDATE drafts SET status = 'publishing', credit_cost = ?, attempts = attempts + 1,
+      updated_at = ? WHERE id = ?`,
+    [cost, now(), draft.id],
+  );
 
   const result = await publishPost(connection, draft.content);
 
   if (result.ok) {
-    db()
-      .prepare(
-        `UPDATE drafts SET status = 'published', x_post_id = ?, published_at = ?,
-          error = NULL, updated_at = ? WHERE id = ?`,
-      )
-      .run(result.postId, now(), now(), draft.id);
+    await run(
+      `UPDATE drafts SET status = 'published', x_post_id = ?, published_at = ?,
+        error = NULL, updated_at = ? WHERE id = ?`,
+      [result.postId, now(), now(), draft.id],
+    );
 
     return {
       ok: true,
@@ -55,14 +55,17 @@ export async function publishDraft(
   }
 
   // Échec : on rembourse systématiquement le débit effectué plus haut.
-  refund(workspace.id, cost, "Remboursement — publication échouée", draft.id);
+  await refund(workspace.id, cost, "Remboursement — publication échouée", draft.id);
 
   const attempts = draft.attempts + 1;
   const giveUp = !result.retryable || attempts >= MAX_ATTEMPTS;
 
-  db()
-    .prepare(`UPDATE drafts SET status = ?, error = ?, updated_at = ? WHERE id = ?`)
-    .run(giveUp ? "failed" : "scheduled", result.error, now(), draft.id);
+  await run(`UPDATE drafts SET status = ?, error = ?, updated_at = ? WHERE id = ?`, [
+    giveUp ? "failed" : "scheduled",
+    result.error,
+    now(),
+    draft.id,
+  ]);
 
   return {
     ok: false,
@@ -74,26 +77,26 @@ export async function publishDraft(
 
 /** Traite toutes les publications arrivées à échéance. */
 export async function runDueDrafts(): Promise<{ processed: number; published: number }> {
-  const due = db()
-    .prepare(
-      `SELECT d.*, w.user_id AS _user_id FROM drafts d
-       JOIN workspaces w ON w.id = d.workspace_id
-       WHERE d.status = 'scheduled' AND d.scheduled_at IS NOT NULL AND d.scheduled_at <= ?
-       ORDER BY d.scheduled_at ASC LIMIT 25`,
-    )
-    .all(now()) as Array<Draft & { _user_id: string }>;
+  const due = await query<Draft & { _user_id: string }>(
+    `SELECT d.*, w.user_id AS _user_id FROM drafts d
+     JOIN workspaces w ON w.id = d.workspace_id
+     WHERE d.status = 'scheduled' AND d.scheduled_at IS NOT NULL AND d.scheduled_at <= ?
+     ORDER BY d.scheduled_at ASC LIMIT 25`,
+    [now()],
+  );
 
   let published = 0;
 
   for (const row of due) {
-    const connection = db()
-      .prepare(`SELECT * FROM x_connections WHERE user_id = ?`)
-      .get(row._user_id) as XConnection | undefined;
-    const workspace = db()
-      .prepare(`SELECT * FROM workspaces WHERE id = ?`)
-      .get(row.workspace_id) as Workspace;
+    const connection = await one<XConnection>(`SELECT * FROM x_connections WHERE user_id = ?`, [
+      row._user_id,
+    ]);
+    const workspace = await one<Workspace>(`SELECT * FROM workspaces WHERE id = ?`, [
+      row.workspace_id,
+    ]);
+    if (!workspace) continue;
 
-    const result = await publishDraft(connection ?? null, workspace, row);
+    const result = await publishDraft(connection, workspace, row);
     if (result.ok) published += 1;
   }
 
@@ -107,21 +110,18 @@ export async function runDueDrafts(): Promise<{ processed: number; published: nu
 export async function refreshMetrics(connection: XConnection | null, workspace: Workspace) {
   const settings = plan(workspace.plan);
 
-  const posts = db()
-    .prepare(
-      `SELECT d.id, d.x_post_id, m.fetched_at FROM drafts d
-       LEFT JOIN post_metrics m ON m.draft_id = d.id
-       WHERE d.workspace_id = ? AND d.status = 'published' AND d.x_post_id IS NOT NULL
-       ORDER BY d.published_at DESC LIMIT ?`,
-    )
-    .all(workspace.id, settings.analyticsSampleSize) as Array<{
-    id: string;
-    x_post_id: string;
-    fetched_at: number | null;
-  }>;
+  const posts = await query<{ id: string; x_post_id: string; fetched_at: number | null }>(
+    `SELECT d.id, d.x_post_id, m.fetched_at FROM drafts d
+     LEFT JOIN post_metrics m ON m.draft_id = d.id
+     WHERE d.workspace_id = ? AND d.status = 'published' AND d.x_post_id IS NOT NULL
+     ORDER BY d.published_at DESC LIMIT ?`,
+    [workspace.id, settings.analyticsSampleSize],
+  );
 
   const staleAfter = settings.analyticsRefreshHours * 60 * 60 * 1000;
-  const stale = posts.filter((post) => !post.fetched_at || now() - post.fetched_at > staleAfter);
+  const stale = posts.filter(
+    (post) => !post.fetched_at || now() - Number(post.fetched_at) > staleAfter,
+  );
 
   if (stale.length === 0) return { refreshed: 0 };
 
@@ -130,31 +130,21 @@ export async function refreshMetrics(connection: XConnection | null, workspace: 
     stale.map((post) => post.x_post_id),
   );
 
-  const upsert = db().prepare(
-    `INSERT INTO post_metrics (id, draft_id, impressions, likes, reposts, replies, fetched_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(draft_id) DO UPDATE SET
-       impressions = excluded.impressions, likes = excluded.likes,
-       reposts = excluded.reposts, replies = excluded.replies,
-       fetched_at = excluded.fetched_at`,
-  );
-
-  const write = db().transaction(() => {
+  await transaction(async (tx) => {
     for (const post of stale) {
       const value = metrics.get(post.x_post_id);
       if (!value) continue;
-      upsert.run(
-        uid("met"),
-        post.id,
-        value.impressions,
-        value.likes,
-        value.reposts,
-        value.replies,
-        now(),
+      await tx.run(
+        `INSERT INTO post_metrics (id, draft_id, impressions, likes, reposts, replies, fetched_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (draft_id) DO UPDATE SET
+           impressions = EXCLUDED.impressions, likes = EXCLUDED.likes,
+           reposts = EXCLUDED.reposts, replies = EXCLUDED.replies,
+           fetched_at = EXCLUDED.fetched_at`,
+        [uid("met"), post.id, value.impressions, value.likes, value.reposts, value.replies, now()],
       );
     }
   });
-  write();
 
   return { refreshed: stale.length };
 }

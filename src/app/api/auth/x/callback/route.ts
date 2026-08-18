@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/app/parametres?x=parametres", request.url));
   }
 
-  const verifier = consumeState(state, "x");
+  const verifier = await consumeState(state, "x");
   if (!verifier) {
     return NextResponse.redirect(new URL("/app/parametres?x=etat", request.url));
   }
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const token = await exchangeCode(code, verifier);
     const profile = await fetchXProfile(token.access_token);
 
-    linkXAccount(context.user.id, {
+    await linkXAccount(context.user.id, {
       ...profile,
       accessToken: token.access_token,
       refreshToken: token.refresh_token ?? null,

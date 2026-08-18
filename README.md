@@ -13,7 +13,7 @@ calendrier X complet, sans avoir à rédiger de contenu quotidien.
 | Langage      | TypeScript (mode strict)                   |
 | Styles       | Tailwind CSS v4 (`@theme` dans `globals.css`) |
 | Polices      | Sora (titres), Inter (texte), JetBrains Mono (libellés) |
-| Base         | SQLite (`better-sqlite3`) — aucun service à provisionner |
+| Base         | Postgres via `pg` — pensé pour Neon, compatible Railway et Supabase |
 | IA           | `@anthropic-ai/sdk`, modèle `claude-opus-5`, sorties structurées Zod |
 | Flux         | `fast-xml-parser` (RSS 2.0 et Atom)        |
 | UI           | Aucune librairie — icônes SVG inline       |
@@ -23,18 +23,27 @@ demande.
 
 ## Installation
 
-**Prérequis : Node.js 20 ou plus.** Rien d'autre — pas de base de données à
-installer, pas de compte à créer, pas de clé d'API à obtenir.
+**Prérequis : Node.js 20 ou plus, et une base Postgres.** Rien d'autre — pas de
+compte à créer ni de clé d'API à obtenir pour démarrer.
+
+Pour la base, [Neon](https://neon.tech) donne une instance gratuite en deux
+minutes et c'est la cible recommandée. Créez un projet, copiez la chaîne de
+connexion **poolée** (son hôte se termine par `-pooler`).
 
 ```bash
 git clone https://github.com/Cliedd/X-share.git
 cd X-share
 npm install
+
+cp .env.example .env.local
+# collez votre chaîne Neon dans DATABASE_URL
+
+npm run migrer     # crée les tables
 npm run dev
 ```
 
-Ouvrez <http://localhost:3000>. La base SQLite se crée toute seule au premier
-démarrage, dans `.data/` (ignorée par git).
+Ouvrez <http://localhost:3000>. Le schéma est aussi appliqué automatiquement à
+la première requête, donc `npm run migrer` est surtout utile au déploiement.
 
 ### Premier tour du produit, en une minute
 
@@ -119,20 +128,63 @@ la montée en offre, le rejeu d'un même événement et la résiliation.
 | `npm run start`     | sert le build de production       |
 | `npm run lint`      | ESLint                            |
 | `npm run typecheck` | `tsc --noEmit`                    |
+| `npm run migrer`    | applique les migrations de schéma  |
 | `npm run verifier:facturation` | vérifie la chaîne Stripe sans clé ni réseau |
+
+## Déploiement
+
+Les deux cibles sont préconfigurées. La base vit chez Neon dans les deux cas.
+
+### Vercel
+
+`vercel.json` est déjà en place, avec la tâche planifiée.
+
+1. Importez le dépôt sur Vercel. Le framework est détecté seul.
+2. Renseignez les variables d'environnement — au minimum `DATABASE_URL` et
+   `APP_URL` (votre domaine de production), puis les blocs que vous activez.
+3. Déployez. Le schéma est appliqué à la première requête ; aucune étape de
+   migration manuelle n'est nécessaire.
+
+Le cron défini dans `vercel.json` appelle `/api/cron/tick` toutes les quinze
+minutes et fournit lui-même l'en-tête d'autorisation à partir de
+`CRON_SECRET`. Définissez cette variable pour fermer la route au public.
+
+**Important sur Vercel** : utilisez impérativement la chaîne Neon *poolée*.
+Chaque fonction serverless ouvre ses propres connexions, et une chaîne directe
+épuiserait la limite de la base.
+
+### Railway
+
+`Dockerfile` et `railway.json` sont fournis.
+
+1. **New Project → Deploy from GitHub repo.** Railway détecte le Dockerfile.
+2. Ajoutez les variables d'environnement, dont `DATABASE_URL` (votre chaîne
+   Neon) et `APP_URL`.
+3. Le déploiement attend que `/api/health` réponde avant de basculer le
+   trafic.
+
+Railway n'a pas de cron intégré au service : ajoutez un **Cron Job** dans le
+projet, planifié sur `*/15 * * * *`, qui appelle votre `/api/cron/tick` avec
+l'en-tête `Authorization: Bearer $CRON_SECRET`.
+
+### Après le déploiement
+
+Vérifiez l'état de l'instance :
+
+```bash
+curl https://VOTRE-DOMAINE/api/health
+```
+
+La réponse indique si la base répond et quels services sont configurés.
+
+Pensez ensuite à déclarer les URI de redirection de **production** dans la
+console Google et le portail développeur X, et à créer le point de terminaison
+webhook Stripe sur votre domaine — les URI locales ne valent que pour le
+développement.
 
 ### Note pour Windows
 
-`better-sqlite3` est un module natif. Il s'installe via un binaire précompilé
-dans l'immense majorité des cas. Si `npm install` tente malgré tout de le
-compiler et échoue, installez les outils de compilation :
-
-```powershell
-npm install --global windows-build-tools
-```
-
-Ou, plus simple, utilisez une version de Node en LTS paire (20 ou 22), pour
-laquelle les binaires précompilés existent.
+Aucune dépendance native n'est requise : `npm install` fonctionne tel quel.
 
 ## Pages
 
@@ -175,6 +227,7 @@ propre habillage.
 | `/api/stripe/portal`        | ouvre le portail de gestion de l'abonnement                |
 | `/api/stripe/webhook`       | reçoit les événements Stripe (signature vérifiée)          |
 | `/api/cron/tick`            | ingère les flux, rédige en pilote auto, publie les dus     |
+| `/api/health`               | sonde de santé : base, schéma, services configurés         |
 
 ## Comment le produit fonctionne
 
@@ -218,6 +271,8 @@ résiliation ou un impayé ramène l'espace à l'offre d'entrée.
 
 L'application tourne de bout en bout sans aucun service externe :
 
+`DATABASE_URL` est la seule variable réellement obligatoire.
+
 | Service manquant       | Comportement                                                      |
 | ---------------------- | ----------------------------------------------------------------- |
 | Google                 | la page Commencer ouvre un compte de démonstration                 |
@@ -246,7 +301,9 @@ src/
     app/          coquille, carte de brouillon, planificateur, formulaires
     ui/           primitives : Button, Container, Section, Eyebrow, icônes
   server/
-    db.ts         schéma SQLite et ouverture
+    db.ts         pool Postgres, requêtes et transactions
+    schema.ts     migrations de schéma, versionnées
+    migrate.ts    exécution des migrations, sous verrou
     auth.ts       sessions par cookie, espaces de travail
     google-oauth.ts OAuth 2.0 Google avec PKCE (identité du compte)
     x-oauth.ts    OAuth 2.0 X avec PKCE (connexion de publication)

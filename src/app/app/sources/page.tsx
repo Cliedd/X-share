@@ -12,8 +12,11 @@ export default async function SourcesPage() {
   if (!context) redirect("/commencer");
   const { user, workspace } = context;
 
-  const connectors = listConnectors(workspace.id);
-  const counts = new Map(connectorCounts(workspace.id).map((row) => [row.id, row]));
+  const [connectors, countRows] = await Promise.all([
+    listConnectors(workspace.id),
+    connectorCounts(workspace.id),
+  ]);
+  const counts = new Map(countRows.map((row) => [row.id, row]));
 
   return (
     <AppShell user={user} workspace={workspace} current="/app/sources">

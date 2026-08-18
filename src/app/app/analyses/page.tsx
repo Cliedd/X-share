@@ -14,9 +14,12 @@ export default async function AnalyticsPage() {
   const { user, workspace } = context;
 
   const settings = plan(workspace.plan);
-  const stats = overview(workspace);
-  const published = listDrafts(workspace.id, ["published"]).slice(0, settings.analyticsSampleSize);
-  const ledger = ledgerEntries(workspace.id, 12);
+  const [stats, allPublished, ledger] = await Promise.all([
+    overview(workspace),
+    listDrafts(workspace.id, ["published"]),
+    ledgerEntries(workspace.id, 12),
+  ]);
+  const published = allPublished.slice(0, settings.analyticsSampleSize);
 
   const measured = stats.engagement.measured || 1;
   const tiles = [

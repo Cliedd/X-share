@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/api/auth/google/login", request.url));
   }
 
-  const user = demoUser();
-  await setSessionCookie(createSession(user.id));
+  const user = await demoUser();
+  await setSessionCookie(await createSession(user.id));
   return NextResponse.redirect(new URL("/app", request.url));
 }

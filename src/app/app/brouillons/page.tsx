@@ -12,8 +12,10 @@ export default async function DraftsPage() {
   if (!context) redirect("/commencer");
   const { user, workspace } = context;
 
-  const inbox = pendingItems(workspace.id);
-  const drafts = listDrafts(workspace.id, ["draft", "approved", "failed"]);
+  const [inbox, drafts] = await Promise.all([
+    pendingItems(workspace.id),
+    listDrafts(workspace.id, ["draft", "approved", "failed"]),
+  ]);
 
   return (
     <AppShell user={user} workspace={workspace} current="/app/brouillons">

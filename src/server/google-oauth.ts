@@ -1,4 +1,4 @@
-import { db, now } from "./db";
+import { run, now } from "./db";
 
 /**
  * OAuth 2.0 Google (Authorization Code + PKCE).
@@ -32,11 +32,11 @@ export async function beginGoogleAuthorization() {
   const verifier = base64url(crypto.getRandomValues(new Uint8Array(48)));
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
 
-  db()
-    .prepare(
-      `INSERT INTO oauth_states (state, provider, code_verifier, created_at) VALUES (?, 'google', ?, ?)`,
-    )
-    .run(state, verifier, now());
+  await run(
+    `INSERT INTO oauth_states (state, provider, code_verifier, created_at)
+     VALUES (?, 'google', ?, ?)`,
+    [state, verifier, now()],
+  );
 
   const params = new URLSearchParams({
     response_type: "code",
