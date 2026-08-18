@@ -21,12 +21,46 @@ calendrier X complet, sans avoir à rédiger de contenu quotidien.
 Les pages marketing sont pré-rendues statiquement ; la console est rendue à la
 demande.
 
-## Démarrer
+## Installation
+
+**Prérequis : Node.js 20 ou plus.** Rien d'autre — pas de base de données à
+installer, pas de compte à créer, pas de clé d'API à obtenir.
 
 ```bash
+git clone https://github.com/Cliedd/X-share.git
+cd X-share
 npm install
-npm run dev      # http://localhost:3000
+npm run dev
 ```
+
+Ouvrez <http://localhost:3000>. La base SQLite se crée toute seule au premier
+démarrage, dans `.data/` (ignorée par git).
+
+### Premier tour du produit, en une minute
+
+1. Cliquez **Commencer**, puis **Continuez avec X**. Sans identifiants X
+   configurés, vous entrez avec un compte de démonstration.
+2. Dans **Sources**, collez `http://localhost:3000/exemple-flux.xml` — un
+   journal des modifications factice livré avec le projet — et cliquez
+   **Connecter**, puis **Récupérer**.
+3. Dans **Brouillons**, cliquez **Rédiger 3 variantes** sur une entrée.
+4. **Approuvez** un brouillon, puis glissez-le dans un créneau du
+   **Planificateur**.
+5. **Publiez** : la publication est simulée et enregistrée, les crédits sont
+   débités, et les métriques apparaissent dans **Analyses**.
+
+### Passer en services réels
+
+Copiez `.env.example` vers `.env.local` et renseignez ce dont vous avez besoin.
+Les deux blocs sont indépendants : vous pouvez activer l'IA sans X, ou
+l'inverse.
+
+| Variable                          | Effet une fois renseignée                        |
+| --------------------------------- | ------------------------------------------------ |
+| `ANTHROPIC_API_KEY`               | les brouillons sont rédigés par Claude            |
+| `X_CLIENT_ID` + `X_CLIENT_SECRET` | la connexion et la publication passent par X      |
+
+### Scripts
 
 | Script              | Rôle                              |
 | ------------------- | --------------------------------- |
@@ -35,6 +69,19 @@ npm run dev      # http://localhost:3000
 | `npm run start`     | sert le build de production       |
 | `npm run lint`      | ESLint                            |
 | `npm run typecheck` | `tsc --noEmit`                    |
+
+### Note pour Windows
+
+`better-sqlite3` est un module natif. Il s'installe via un binaire précompilé
+dans l'immense majorité des cas. Si `npm install` tente malgré tout de le
+compiler et échoue, installez les outils de compilation :
+
+```powershell
+npm install --global windows-build-tools
+```
+
+Ou, plus simple, utilisez une version de Node en LTS paire (20 ou 22), pour
+laquelle les binaires précompilés existent.
 
 ## Pages
 
