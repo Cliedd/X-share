@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Sora, JetBrains_Mono } from "next/font/google";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
 import { site } from "@/lib/content";
 import "./globals.css";
 
@@ -63,11 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Aller au contenu
         </a>
-        <SiteHeader />
-        <main id="contenu" className="pt-16 sm:pt-[72px]">
-          {children}
-        </main>
-        <SiteFooter />
+        {children}
       </body>
     </html>
   );

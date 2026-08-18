@@ -38,7 +38,7 @@ export default function GetStartedPage() {
               className="hairline-top relative flex flex-col gap-4 rounded-4xl border
                 border-[var(--line-strong)] bg-ink-850 p-7 sm:p-9"
             >
-              <ButtonLink href="/commencer" size="lg" className="w-full">
+              <ButtonLink href="/api/auth/x/login" size="lg" className="w-full">
                 <XLogo className="size-4" />
                 {getStarted.primaryCta}
               </ButtonLink>
