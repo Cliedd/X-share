@@ -62,7 +62,7 @@ export default async function SettingsPage() {
                 name="product_context"
                 rows={4}
                 defaultValue={workspace.product_context ?? ""}
-                placeholder="LONTSI est un outil de publication automatique X destiné aux éditeurs de SaaS. Public : fondateurs techniques."
+                placeholder="CLIEDD est un outil de publication automatique X destiné aux éditeurs de SaaS. Public : fondateurs techniques."
                 className={FIELD}
               />
               <span className="text-[12.5px] text-muted">

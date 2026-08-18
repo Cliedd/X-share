@@ -1,7 +1,7 @@
 import type { User } from "./types";
 
 /**
- * Client X API v2 réduit à ce dont LONTSI a besoin : publier et relever les
+ * Client X API v2 réduit à ce dont CLIEDD a besoin : publier et relever les
  * métriques. Sans jeton d'accès, les appels sont simulés afin que le cycle
  * complet reste exerçable hors compte développeur X.
  */

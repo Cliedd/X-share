@@ -15,7 +15,7 @@ export function Wordmark({ className }: { className?: string }) {
           font-bold text-ink-950 transition-transform duration-200 group-hover:scale-105"
         aria-hidden="true"
       >
-        L
+        {site.name[0]}
       </span>
       <span className="font-display text-[17px] font-semibold tracking-tight">
         {site.name}

@@ -1,4 +1,4 @@
-# LONTSI
+# CLIEDD
 
 Publication automatique X pour SaaS — site marketing et pages produit.
 
@@ -46,7 +46,7 @@ propre habillage.
 
 | Route               | Contenu                                                        |
 | ------------------- | -------------------------------------------------------------- |
-| `/`                 | héros, boucle LONTSI (4 étapes), produit, aperçu tarifaire, FAQ |
+| `/`                 | héros, boucle CLIEDD (4 étapes), produit, aperçu tarifaire, FAQ |
 | `/tarification`     | 3 offres, bascule mensuel/annuel, tableau comparatif, FAQ, CTA  |
 | `/commencer`        | connexion X                                                     |
 | `/termes`           | conditions d'utilisation                                        |

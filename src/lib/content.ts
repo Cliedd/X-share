@@ -4,13 +4,13 @@
  */
 
 export const site = {
-  name: "LONTSI",
-  wordmark: "LONTSI.",
+  name: "CLIEDD",
+  wordmark: "CLIEDD.",
   tagline: "Publication automatique X pour SaaS",
   description:
     "Connectez vos sources, obtenez des brouillons IA dans votre style et gérez un calendrier X complet, sans avoir à rédiger de contenu quotidien.",
-  email: "support@lontsi.app",
-  url: "https://www.lontsi.app",
+  email: "support@cliedd.app",
+  url: "https://www.cliedd.app",
 } as const;
 
 export const nav = [
@@ -30,7 +30,7 @@ export const hero = {
 } as const;
 
 export const loop = {
-  eyebrow: "La boucle LONTSI",
+  eyebrow: "La boucle CLIEDD",
   title: "Quatre étapes. Un cycle hebdomadaire.",
   steps: [
     {
@@ -48,7 +48,7 @@ export const loop = {
     {
       number: "03",
       title: "Planifiez la semaine",
-      body: "Déposez vos ébauches dans les emplacements libres. LONTSI suggère le meilleur moment pour publier.",
+      body: "Déposez vos ébauches dans les emplacements libres. CLIEDD suggère le meilleur moment pour publier.",
       accent: "aqua",
     },
     {
@@ -66,7 +66,7 @@ export const product = {
   subtitle:
     "Le calendrier et la file d'attente permettent d'organiser chaque mise à jour : vérifiez-la, puis publiez-la au moment opportun.",
   imageAlt:
-    "Tableau de bord LONTSI avec publications programmées, file d'attente de brouillons IA et flux RSS",
+    "Tableau de bord CLIEDD avec publications programmées, file d'attente de brouillons IA et flux RSS",
   caption: "Une vue hebdomadaire pour vos flux RSS, vos brouillons et vos articles programmés.",
   points: [
     "Consultez le programme complet de la semaine en un coup d'œil.",
@@ -84,7 +84,7 @@ export const pricingTeaser = {
   price: "9,99 $",
   period: "/mois",
   features: "Connecteurs RSS · Brouillons IA · Planification visuelle · Relecture préalable",
-  primaryCta: { label: "Essayez LONTSI dès maintenant", href: "/commencer" },
+  primaryCta: { label: "Essayez CLIEDD dès maintenant", href: "/commencer" },
   secondaryCta: { label: "Voir tous les forfaits", href: "/tarification" },
 } as const;
 
@@ -98,7 +98,7 @@ export const homeFaq = {
     },
     {
       q: "Comment fonctionne la connexion RSS et journal des modifications ?",
-      a: "Vous connectez un flux, choisissez les règles de révision ou de publication automatique, puis LONTSI transforme les nouvelles entrées en brouillons prêts pour la publication et les place dans votre file d'attente.",
+      a: "Vous connectez un flux, choisissez les règles de révision ou de publication automatique, puis CLIEDD transforme les nouvelles entrées en brouillons prêts pour la publication et les place dans votre file d'attente.",
     },
     {
       q: "L'IA peut-elle suivre AIDA, PAS ou ma propre instruction ?",
@@ -106,7 +106,7 @@ export const homeFaq = {
     },
     {
       q: "Que se passe-t-il si des limites d'API X s'appliquent ?",
-      a: "LONTSI vous permet de garder votre file d'attente et votre planning organisés, mais la publication et l'analyse dépendent toujours des limites et des crédits disponibles sur votre compte développeur X.",
+      a: "CLIEDD vous permet de garder votre file d'attente et votre planning organisés, mais la publication et l'analyse dépendent toujours des limites et des crédits disponibles sur votre compte développeur X.",
     },
   ],
 } as const;
@@ -260,14 +260,14 @@ export const getStarted = {
   title: "Connecter X.",
   titleAccent: "Ouvrez votre console de publication.",
   subtitle:
-    "Connectez-vous à X pour créer votre espace de travail. LONTSI ne publie que les messages que vous approuvez ou programmez, et vous pouvez vous déconnecter à tout moment.",
+    "Connectez-vous à X pour créer votre espace de travail. CLIEDD ne publie que les messages que vous approuvez ou programmez, et vous pouvez vous déconnecter à tout moment.",
   primaryCta: "Continuez avec X",
   secondaryCta: { label: "Consulter les tarifs", href: "/tarification" },
   legalPrefix: "En continuant, vous acceptez les ",
   legalTerms: "conditions d'utilisation",
   legalMiddle: " et la ",
   legalPrivacy: "politique de confidentialité",
-  legalSuffix: " de LONTSI. Les abonnements payants sont gérés par Paddle.",
+  legalSuffix: " de CLIEDD. Les abonnements payants sont gérés par Paddle.",
 } as const;
 
 export const footer = {
@@ -278,5 +278,5 @@ export const footer = {
     { label: "Confidentialité", href: "/confidentialite" },
   ],
   email: site.email,
-  copyright: `© ${new Date().getFullYear()} LONTSI. Tous droits réservés.`,
+  copyright: `© ${new Date().getFullYear()} CLIEDD. Tous droits réservés.`,
 } as const;

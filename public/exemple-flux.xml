@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
-    <title>LONTSI — Journal des modifications (exemple)</title>
-    <link>https://lontsi.app/changelog</link>
+    <title>CLIEDD — Journal des modifications (exemple)</title>
+    <link>https://cliedd.app/changelog</link>
     <description>Flux de démonstration pour connecter un premier connecteur.</description>
     <item>
       <title>Webhooks sortants sur tous les événements</title>
-      <link>https://lontsi.app/changelog/webhooks</link>
-      <guid>lontsi-changelog-0001</guid>
+      <link>https://cliedd.app/changelog/webhooks</link>
+      <guid>cliedd-changelog-0001</guid>
       <pubDate>Mon, 17 Aug 2026 09:00:00 GMT</pubDate>
       <description>Chaque événement du planificateur peut désormais déclencher un webhook signé : publication réussie, échec, entrée ingérée. Rejeu manuel sur 7 jours.</description>
     </item>
     <item>
       <title>Le coach IA suggère un créneau par jour</title>
-      <link>https://lontsi.app/changelog/coach</link>
-      <guid>lontsi-changelog-0002</guid>
+      <link>https://cliedd.app/changelog/coach</link>
+      <guid>cliedd-changelog-0002</guid>
       <pubDate>Wed, 12 Aug 2026 14:30:00 GMT</pubDate>
       <description>Le coach analyse vos impressions passées et propose le créneau le plus porteur de la semaine, directement dans le planificateur.</description>
     </item>
     <item>
       <title>Import OPML des flux existants</title>
-      <link>https://lontsi.app/changelog/opml</link>
-      <guid>lontsi-changelog-0003</guid>
+      <link>https://cliedd.app/changelog/opml</link>
+      <guid>cliedd-changelog-0003</guid>
       <pubDate>Fri, 07 Aug 2026 08:15:00 GMT</pubDate>
       <description>Migrez vos abonnements depuis un lecteur RSS en déposant un fichier OPML : tous les flux deviennent des connecteurs en mode révision.</description>
     </item>

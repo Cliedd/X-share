@@ -121,7 +121,7 @@ export function parseFeed(xml: string): { title: string; entries: ParsedEntry[] 
 
 export async function fetchFeed(url: string) {
   const response = await fetch(url, {
-    headers: { "User-Agent": "LONTSI/1.0 (+https://lontsi.app)", Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml" },
+    headers: { "User-Agent": "CLIEDD/1.0 (+https://cliedd.app)", Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml" },
     signal: AbortSignal.timeout(15_000),
   });
 

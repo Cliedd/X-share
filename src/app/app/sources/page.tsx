@@ -61,7 +61,7 @@ export default async function SourcesPage() {
       {connectors.length === 0 ? (
         <EmptyState
           title="Aucune source connectée"
-          body="Ajoutez le flux de votre journal des modifications : LONTSI y puisera chaque nouvelle entrée pour en faire des publications."
+          body="Ajoutez le flux de votre journal des modifications : CLIEDD y puisera chaque nouvelle entrée pour en faire des publications."
         />
       ) : (
         <ul className="flex flex-col gap-3">

@@ -75,7 +75,7 @@ export default function HomePage() {
         </Container>
       </section>
 
-      {/* ---------------------------- Boucle LONTSI --------------------------- */}
+      {/* ---------------------------- Boucle CLIEDD --------------------------- */}
       <Section id="boucle" className="border-t border-[var(--line)] bg-ink-900">
         <Container>
           <SectionHeading

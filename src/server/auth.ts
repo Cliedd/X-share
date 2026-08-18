@@ -4,7 +4,7 @@ import type { User, Workspace } from "./types";
 import { ensureCreditCycle } from "./credits";
 import { plan } from "./plans";
 
-const SESSION_COOKIE = "lontsi_session";
+const SESSION_COOKIE = "cliedd_session";
 const SESSION_TTL = 30 * 24 * 60 * 60 * 1000;
 
 export function createSession(userId: string) {

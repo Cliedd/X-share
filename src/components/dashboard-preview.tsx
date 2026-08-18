@@ -47,7 +47,7 @@ export function DashboardPreview() {
       className="relative overflow-hidden rounded-3xl border border-[var(--line-strong)]
         bg-ink-900 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)] @container"
       role="img"
-      aria-label="Tableau de bord LONTSI avec publications programmées, file d'attente de brouillons IA et flux RSS"
+      aria-label="Tableau de bord CLIEDD avec publications programmées, file d'attente de brouillons IA et flux RSS"
     >
       {/* Barre de fenêtre */}
       <div
@@ -63,7 +63,7 @@ export function DashboardPreview() {
           className="ml-2 flex-1 rounded-md bg-ink-800 px-3 py-1 font-mono text-[10px]
             text-faint sm:text-[11px]"
         >
-          lontsi.app/planificateur
+          cliedd.app/planificateur
         </div>
         <span
           className="hidden items-center gap-1.5 rounded-full border border-aqua-400/30

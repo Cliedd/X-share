@@ -7,7 +7,7 @@ import { dirname } from "node:path";
  * Le schéma est appliqué à l'ouverture ; chaque instruction est idempotente.
  */
 
-const DB_PATH = process.env.LONTSI_DB_PATH ?? ".data/lontsi.db";
+const DB_PATH = process.env.CLIEDD_DB_PATH ?? ".data/cliedd.db";
 
 const SCHEMA = `
 PRAGMA journal_mode = WAL;

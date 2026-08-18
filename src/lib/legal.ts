@@ -9,12 +9,12 @@ export const terms = {
   title: "Conditions d'utilisation",
   updatedAt: "18 août 2026",
   intro:
-    "Ces conditions encadrent votre utilisation de LONTSI, le service de publication automatique X destiné aux éditeurs de SaaS.",
+    "Ces conditions encadrent votre utilisation de CLIEDD, le service de publication automatique X destiné aux éditeurs de SaaS.",
   sections: [
     {
       heading: "Objet du service",
       paragraphs: [
-        "LONTSI connecte vos sources de contenu — flux RSS, journal des modifications, blog ou notes de version — transforme les nouvelles entrées en brouillons de publications, et les met en file d'attente dans un planificateur hebdomadaire pour publication sur X.",
+        "CLIEDD connecte vos sources de contenu — flux RSS, journal des modifications, blog ou notes de version — transforme les nouvelles entrées en brouillons de publications, et les met en file d'attente dans un planificateur hebdomadaire pour publication sur X.",
         "Le service ne publie que les messages que vous approuvez ou programmez. Vous pouvez à tout moment repasser un connecteur en mode révision ou déconnecter votre compte X.",
       ],
     },
@@ -22,7 +22,7 @@ export const terms = {
       heading: "Compte et connexion X",
       paragraphs: [
         "La création d'un espace de travail passe par une connexion à votre compte X. Vous êtes responsable des identifiants utilisés et des publications diffusées depuis votre compte.",
-        "La publication et les analyses dépendent des limites et des crédits disponibles sur votre compte développeur X. LONTSI conserve votre file d'attente et votre planning organisés, mais ne peut pas dépasser les quotas imposés par la plateforme X.",
+        "La publication et les analyses dépendent des limites et des crédits disponibles sur votre compte développeur X. CLIEDD conserve votre file d'attente et votre planning organisés, mais ne peut pas dépasser les quotas imposés par la plateforme X.",
       ],
     },
     {
@@ -43,7 +43,7 @@ export const terms = {
     {
       heading: "Contenu généré par l'IA",
       paragraphs: [
-        "Les brouillons produits par LONTSI s'appuient sur vos sources et sur le cadre rédactionnel que vous choisissez (AIDA, PAS ou votre propre instruction). Ils constituent des propositions : leur relecture vous incombe.",
+        "Les brouillons produits par CLIEDD s'appuient sur vos sources et sur le cadre rédactionnel que vous choisissez (AIDA, PAS ou votre propre instruction). Ils constituent des propositions : leur relecture vous incombe.",
         "Vous restez propriétaire de vos contenus sources et des publications diffusées, et vous êtes responsable de leur conformité aux règles de la plateforme X.",
       ],
     },
@@ -57,7 +57,7 @@ export const terms = {
     {
       heading: "Nous contacter",
       paragraphs: [
-        "Pour toute question relative à ces conditions, écrivez à support@lontsi.app. Nous répondons sous quelques jours ouvrés.",
+        "Pour toute question relative à ces conditions, écrivez à support@cliedd.app. Nous répondons sous quelques jours ouvrés.",
       ],
     },
   ],
@@ -68,7 +68,7 @@ export const privacy = {
   title: "Politique de confidentialité",
   updatedAt: "18 août 2026",
   intro:
-    "Cette politique décrit les données que LONTSI collecte, l'usage qui en est fait et les moyens dont vous disposez pour les contrôler.",
+    "Cette politique décrit les données que CLIEDD collecte, l'usage qui en est fait et les moyens dont vous disposez pour les contrôler.",
   sections: [
     {
       heading: "Données collectées",
@@ -89,7 +89,7 @@ export const privacy = {
       heading: "Connexion à la plateforme X",
       paragraphs: [
         "L'autorisation accordée lors de la connexion permet uniquement de publier les messages que vous approuvez ou programmez et de lire les statistiques associées.",
-        "Vous pouvez révoquer cette autorisation à tout moment depuis votre espace de travail LONTSI ou depuis les réglages de votre compte X. Les jetons correspondants sont alors supprimés.",
+        "Vous pouvez révoquer cette autorisation à tout moment depuis votre espace de travail CLIEDD ou depuis les réglages de votre compte X. Les jetons correspondants sont alors supprimés.",
       ],
     },
     {
@@ -109,7 +109,7 @@ export const privacy = {
       heading: "Vos droits",
       paragraphs: [
         "Vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité sur vos données, ainsi que d'un droit d'opposition à certains traitements.",
-        "Pour exercer ces droits, écrivez à support@lontsi.app depuis l'adresse associée à votre compte.",
+        "Pour exercer ces droits, écrivez à support@cliedd.app depuis l'adresse associée à votre compte.",
       ],
     },
   ],

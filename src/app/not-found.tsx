@@ -11,7 +11,7 @@ export default function NotFound() {
           <span className="text-gradient font-display text-6xl font-bold sm:text-7xl">404</span>
           <h1 className="text-2xl font-semibold sm:text-3xl">Cette page n&apos;est pas au planning.</h1>
           <p className="text-[15px] leading-relaxed text-muted">
-            Le lien que vous avez suivi ne mène à aucune section de LONTSI. Revenez à l&apos;accueil
+            Le lien que vous avez suivi ne mène à aucune section de CLIEDD. Revenez à l&apos;accueil
             pour reprendre la boucle.
           </p>
           <ButtonLink href="/" size="lg" className="mt-2">
