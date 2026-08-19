@@ -33,8 +33,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
-EXPOSE 3000
-ENV PORT=3000
+# Railway injecte PORT dynamiquement ; on expose 8080 comme valeur par défaut.
+ENV PORT=8080
 ENV HOSTNAME=0.0.0.0
+EXPOSE 8080
 
 CMD ["node", "server.js"]
