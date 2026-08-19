@@ -9,6 +9,8 @@ import { getStarted } from "@/lib/content";
 import { currentUser } from "@/server/auth";
 import { googleConfig } from "@/server/google-oauth";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Commencer",
   description: getStarted.subtitle,
