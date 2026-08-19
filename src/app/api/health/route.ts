@@ -24,8 +24,8 @@ export async function GET() {
       services: {
         google: Boolean(process.env.GOOGLE_CLIENT_ID),
         stripe: Boolean(process.env.STRIPE_SECRET_KEY),
-        stripeMode: process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_") ? "live" : "test",
-        anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+        stripeMode: /^(sk|rk)_live_/.test(process.env.STRIPE_SECRET_KEY ?? "") ? "live" : "test",
+        deepseek: Boolean(process.env.DEEPSEEK_API_KEY),
         x: Boolean(process.env.X_CLIENT_ID),
       },
     });
