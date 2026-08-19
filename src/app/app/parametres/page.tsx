@@ -30,6 +30,51 @@ export default async function SettingsPage() {
         subtitle="Cadre rédactionnel, contexte produit et offre. Ces réglages pilotent chaque brouillon généré."
       />
 
+      {/* Section connexion X — en premier, bien visible */}
+      <div className="mb-6">
+        <Card>
+          <h2 className="mb-4 font-display text-[17px] font-semibold">
+            Mon compte X
+          </h2>
+          {x ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[15px] font-semibold">
+                  Relié à <span className="text-amber-300">@{x.handle}</span>
+                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-muted">
+                  CLIEDD ne publie que les posts que vous approuvez ou programmez.
+                </p>
+              </div>
+              <ActionForm action={disconnectX} confirm="Déconnecter le compte X ?">
+                <SubmitButton variant="danger" className="h-10 px-5">
+                  Déconnecter X
+                </SubmitButton>
+              </ActionForm>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[15px] font-semibold text-amber-300">
+                  Votre compte X n&apos;est pas encore connecté
+                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-muted">
+                  {xConfig().configured
+                    ? "Connectez votre compte X pour publier vos posts directement depuis CLIEDD."
+                    : "La publication X n'est pas encore activée sur cette instance. Contactez votre administrateur."}
+                </p>
+              </div>
+              {xConfig().configured ? (
+                <ButtonLink href="/api/auth/x/login" size="lg" className="shrink-0 sm:w-auto w-full">
+                  <XLogo className="size-4" />
+                  Connecter mon compte X
+                </ButtonLink>
+              ) : null}
+            </div>
+          )}
+        </Card>
+      </div>
+
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <Card>
           <ActionForm action={updateSettings} className="flex flex-col gap-5">
@@ -78,37 +123,6 @@ export default async function SettingsPage() {
         </Card>
 
         <div className="flex flex-col gap-5">
-          <Card>
-            <h2 className="mb-3 font-display text-[15px] font-semibold">Publication X</h2>
-            {x ? (
-              <>
-                <p className="text-[13.5px]">
-                  Relié à <strong>@{x.handle}</strong>
-                </p>
-                <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
-                  CLIEDD ne publie que les messages que vous approuvez ou programmez.
-                </p>
-                <ActionForm action={disconnectX} className="mt-4" confirm="Déconnecter le compte X ?">
-                  <SubmitButton variant="danger">Déconnecter</SubmitButton>
-                </ActionForm>
-              </>
-            ) : (
-              <>
-                <p className="text-[13.5px] leading-relaxed text-muted">
-                  {xConfig().configured
-                    ? "Reliez votre compte X pour diffuser réellement vos publications."
-                    : "X n'est pas configuré sur cette instance : les publications sont simulées puis enregistrées."}
-                </p>
-                {xConfig().configured ? (
-                  <ButtonLink href="/api/auth/x/login" className="mt-4 w-full">
-                    <XLogo className="size-4" />
-                    Relier mon compte X
-                  </ButtonLink>
-                ) : null}
-              </>
-            )}
-          </Card>
-
           <Card>
             <h2 className="mb-3 font-display text-[15px] font-semibold">Compte</h2>
             <dl className="flex flex-col gap-2.5 text-[13px]">

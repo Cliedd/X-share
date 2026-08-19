@@ -6,6 +6,8 @@ import { overview, listDrafts, pendingItems } from "@/server/queries";
 import { plan } from "@/server/plans";
 import { aiConfigured } from "@/server/ai";
 import { xConfig } from "@/server/x-oauth";
+import { XLogo } from "@/components/ui/icons";
+import { ButtonLink } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -39,12 +41,47 @@ export default async function DashboardPage() {
 
       {/* Bandeaux de configuration : n'apparaissent que si un service manque. */}
       <div className="mb-6 flex flex-col gap-3">
-        {!xConfig().configured ? (
-          <Banner
-            tone="amber"
-            text="Aucun identifiant X configuré : les publications sont simulées et enregistrées, sans être diffusées. Renseignez X_CLIENT_ID et X_CLIENT_SECRET pour publier réellement."
-          />
-        ) : null}
+        {/* Card de connexion X — visible uniquement si le compte n'est pas relié */}
+        {!context.x ? (
+          xConfig().configured ? (
+            <div className="flex items-center justify-between gap-4 rounded-2xl border border-amber-400/40
+              bg-amber-400/8 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <XLogo className="size-5 shrink-0 text-amber-300" />
+                <div>
+                  <p className="text-[14px] font-semibold text-amber-300">
+                    Connecter mon compte X
+                  </p>
+                  <p className="text-[12.5px] text-muted mt-0.5">
+                    Reliez votre compte X pour publier vos posts directement depuis CLIEDD.
+                  </p>
+                </div>
+              </div>
+              <ButtonLink href="/api/auth/x/login" className="shrink-0">
+                Connecter X
+              </ButtonLink>
+            </div>
+          ) : (
+            <Banner
+              tone="amber"
+              text="Aucun identifiant X configuré : les publications sont simulées et enregistrées, sans être diffusées. Renseignez X_CLIENT_ID et X_CLIENT_SECRET pour publier réellement."
+            />
+          )
+        ) : (
+          <div className="flex items-center gap-3 rounded-2xl border border-aqua-400/30
+            bg-aqua-400/8 px-5 py-3.5">
+            <XLogo className="size-4 shrink-0 text-aqua-400" />
+            <p className="text-[13.5px]">
+              Compte X relié :{" "}
+              <strong className="text-aqua-300">@{context.x.handle}</strong>
+            </p>
+            <span className="ml-auto rounded-full bg-aqua-500/20 px-2.5 py-0.5 text-[11px]
+              font-mono font-semibold tracking-wide text-aqua-300">
+              Connecté
+            </span>
+          </div>
+        )}
+
         {!aiConfigured() ? (
           <Banner
             tone="violet"
