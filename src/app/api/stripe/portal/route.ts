@@ -5,18 +5,21 @@ import { createPortalSession, stripeConfigured } from "@/server/stripe";
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
+  void request;
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+
   const context = await requireSession();
-  if (!context) return NextResponse.redirect(new URL("/commencer", request.url));
+  if (!context) return NextResponse.redirect(new URL("/commencer", appUrl));
 
   if (!stripeConfigured() || !context.workspace.stripe_customer_id) {
-    return NextResponse.redirect(new URL("/app/facturation?erreur=portail", request.url));
+    return NextResponse.redirect(new URL("/app/facturation?erreur=portail", appUrl));
   }
 
   try {
     const url = await createPortalSession(context.workspace);
-    return NextResponse.redirect(url ?? new URL("/app/facturation", request.url));
+    return NextResponse.redirect(url ?? new URL("/app/facturation", appUrl));
   } catch (error) {
     console.error("Portail Stripe :", error);
-    return NextResponse.redirect(new URL("/app/facturation?erreur=portail", request.url));
+    return NextResponse.redirect(new URL("/app/facturation?erreur=portail", appUrl));
   }
 }

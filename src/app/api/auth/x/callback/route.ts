@@ -9,23 +9,26 @@ export const runtime = "nodejs";
  * compte doit déjà exister, et l'autorisation vient s'y rattacher.
  */
 export async function GET(request: NextRequest) {
+  void request;
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+
   const context = await requireSession();
-  if (!context) return NextResponse.redirect(new URL("/commencer", request.url));
+  if (!context) return NextResponse.redirect(new URL("/commencer", appUrl));
 
   const params = request.nextUrl.searchParams;
   const code = params.get("code");
   const state = params.get("state");
 
   if (params.get("error")) {
-    return NextResponse.redirect(new URL("/app/parametres?x=refus", request.url));
+    return NextResponse.redirect(new URL("/app/parametres?x=refus", appUrl));
   }
   if (!code || !state) {
-    return NextResponse.redirect(new URL("/app/parametres?x=parametres", request.url));
+    return NextResponse.redirect(new URL("/app/parametres?x=parametres", appUrl));
   }
 
   const verifier = await consumeState(state, "x");
   if (!verifier) {
-    return NextResponse.redirect(new URL("/app/parametres?x=etat", request.url));
+    return NextResponse.redirect(new URL("/app/parametres?x=etat", appUrl));
   }
 
   try {
@@ -39,8 +42,8 @@ export async function GET(request: NextRequest) {
       expiresAt: token.expires_in ? Date.now() + token.expires_in * 1000 : null,
     });
 
-    return NextResponse.redirect(new URL("/app/parametres?x=succes", request.url));
+    return NextResponse.redirect(new URL("/app/parametres?x=succes", appUrl));
   } catch {
-    return NextResponse.redirect(new URL("/app/parametres?x=echange", request.url));
+    return NextResponse.redirect(new URL("/app/parametres?x=echange", appUrl));
   }
 }

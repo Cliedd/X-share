@@ -5,12 +5,14 @@ import { requireSession } from "@/server/auth";
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  // Relier X suppose un compte : on passe d'abord par la connexion.
+  void request;
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+
   const context = await requireSession();
-  if (!context) return NextResponse.redirect(new URL("/commencer", request.url));
+  if (!context) return NextResponse.redirect(new URL("/commencer", appUrl));
 
   if (!xConfig().configured) {
-    return NextResponse.redirect(new URL("/app/parametres?x=non-configure", request.url));
+    return NextResponse.redirect(new URL("/app/parametres?x=non-configure", appUrl));
   }
 
   return NextResponse.redirect(await beginAuthorization());

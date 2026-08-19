@@ -9,11 +9,14 @@ export const runtime = "nodejs";
  * pas configuré, pour que l'application soit exerçable sans fournisseur.
  */
 export async function GET(request: NextRequest) {
+  void request;
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+
   if (googleConfig().configured) {
-    return NextResponse.redirect(new URL("/api/auth/google/login", request.url));
+    return NextResponse.redirect(new URL("/api/auth/google/login", appUrl));
   }
 
   const user = await demoUser();
   await setSessionCookie(await createSession(user.id));
-  return NextResponse.redirect(new URL("/app", request.url));
+  return NextResponse.redirect(new URL("/app", appUrl));
 }
