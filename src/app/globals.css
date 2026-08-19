@@ -52,6 +52,29 @@
       var(--color-amber-400) 100%
     );
   }
+
+  /* ---- Mode clair (classe .dark absente sur <html>) ---- */
+  html:not(.dark) {
+    --line: color-mix(in oklab, #6b6b8a 14%, transparent);
+    --line-strong: color-mix(in oklab, #6b6b8a 26%, transparent);
+  }
+
+  html:not(.dark) body {
+    background-color: #f8f7ff;
+    color: #1a1530;
+  }
+
+  html:not(.dark) .bg-ink-950,
+  html:not(.dark) [class*="bg-ink-9"] {
+    background-color: #f0eeff;
+  }
+  html:not(.dark) .bg-ink-900 { background-color: #eceaff; }
+  html:not(.dark) .bg-ink-850 { background-color: #e4e1ff; }
+  html:not(.dark) .bg-ink-800 { background-color: #d9d6f5; }
+
+  html:not(.dark) .text-muted { color: #5b5480; }
+  html:not(.dark) .text-faint { color: #8b82ad; }
+  html:not(.dark) .text-cloud { color: #1a1530; }
 }
 
 @layer base {

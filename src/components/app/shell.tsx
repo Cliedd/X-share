@@ -3,17 +3,18 @@ import { cn } from "@/lib/utils";
 import { Wordmark } from "@/components/wordmark";
 import { logout } from "@/server/actions";
 import { ActionForm, SubmitButton } from "./action-button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { plan } from "@/server/plans";
 import type { User, Workspace } from "@/server/types";
 
 const NAV = [
   { href: "/app", label: "Tableau de bord" },
-  { href: "/app/sources", label: "Sources" },
-  { href: "/app/brouillons", label: "Brouillons" },
-  { href: "/app/planificateur", label: "Planificateur" },
-  { href: "/app/analyses", label: "Analyses" },
-  { href: "/app/facturation", label: "Facturation" },
-  { href: "/app/parametres", label: "Paramètres" },
+  { href: "/app/sources", label: "Sources RSS" },
+  { href: "/app/brouillons", label: "Mes posts" },
+  { href: "/app/planificateur", label: "Calendrier" },
+  { href: "/app/analyses", label: "Statistiques" },
+  { href: "/app/facturation", label: "Abonnement" },
+  { href: "/app/parametres", label: "Mon compte" },
 ];
 
 export function AppShell({
@@ -65,7 +66,7 @@ export function AppShell({
           <div className="rounded-2xl border border-[var(--line)] bg-ink-850 p-4">
             <div className="flex items-baseline justify-between">
               <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
-                Crédits
+                Crédits de publication
               </span>
               <span className="font-display text-lg font-semibold">
                 {workspace.credits_remaining}
@@ -93,11 +94,14 @@ export function AppShell({
                 {user.email ?? "compte local"}
               </p>
             </div>
-            <ActionForm action={logout}>
-              <SubmitButton variant="secondary" className="h-8 px-3 text-[12px]">
-                Quitter
-              </SubmitButton>
-            </ActionForm>
+            <div className="flex items-center gap-2 shrink-0">
+              <ThemeToggle />
+              <ActionForm action={logout}>
+                <SubmitButton variant="secondary" className="h-8 px-3 text-[12px]">
+                  Quitter
+                </SubmitButton>
+              </ActionForm>
+            </div>
           </div>
         </div>
       </aside>

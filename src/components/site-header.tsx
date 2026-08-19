@@ -7,6 +7,7 @@ import { Container } from "@/components/ui/container";
 import { ButtonLink } from "@/components/ui/button";
 import { Wordmark } from "@/components/wordmark";
 import { Menu, Close } from "@/components/ui/icons";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { nav } from "@/lib/content";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +61,7 @@ export function SiteHeader() {
           </nav>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <ButtonLink href="/commencer" className="hidden sm:inline-flex">
               Commencer
             </ButtonLink>
