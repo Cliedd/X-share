@@ -10,16 +10,20 @@ export async function GET(request: NextRequest) {
   const code = params.get("code");
   const state = params.get("state");
 
+  // Use the public APP_URL as base for all redirects to avoid resolving against
+  // the internal 0.0.0.0 host that Railway exposes to the Node process.
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+
   if (params.get("error")) {
-    return NextResponse.redirect(new URL("/commencer?erreur=refus", request.url));
+    return NextResponse.redirect(new URL("/commencer?erreur=refus", appUrl));
   }
   if (!code || !state) {
-    return NextResponse.redirect(new URL("/commencer?erreur=parametres", request.url));
+    return NextResponse.redirect(new URL("/commencer?erreur=parametres", appUrl));
   }
 
   const verifier = await consumeState(state, "google");
   if (!verifier) {
-    return NextResponse.redirect(new URL("/commencer?erreur=etat", request.url));
+    return NextResponse.redirect(new URL("/commencer?erreur=etat", appUrl));
   }
 
   try {
@@ -28,8 +32,8 @@ export async function GET(request: NextRequest) {
     const user = await upsertGoogleUser(profile);
 
     await setSessionCookie(await createSession(user.id));
-    return NextResponse.redirect(new URL("/app", request.url));
+    return NextResponse.redirect(new URL("/app", appUrl));
   } catch {
-    return NextResponse.redirect(new URL("/commencer?erreur=echange", request.url));
+    return NextResponse.redirect(new URL("/commencer?erreur=echange", appUrl));
   }
 }
