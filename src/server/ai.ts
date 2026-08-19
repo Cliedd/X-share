@@ -1,27 +1,23 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { Framework, SourceItem, Workspace } from "./types";
 
 /**
  * Rédaction des brouillons X à partir d'une entrée de flux.
- * Les variantes sont demandées en sortie structurée : le modèle renvoie du
- * JSON validé par le schéma, on n'analyse jamais du texte libre.
+ *
+ * Utilise DeepSeek Chat (API compatible OpenAI) si DEEPSEEK_API_KEY est définie,
+ * sinon bascule sur un repli local sans appel réseau.
  */
 
-const MODEL = "claude-opus-5";
+const MODEL = "deepseek-chat";
+const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 
 const DraftSchema = z.object({
-  variants: z
-    .array(
-      z.object({
-        text: z
-          .string()
-          .describe("Le corps de la publication X, 280 caractères maximum, sans guillemets."),
-        angle: z.string().describe("En trois à six mots, l'angle retenu pour cette variante."),
-      }),
-    )
-    .describe("Trois variantes distinctes de la même annonce."),
+  variants: z.array(
+    z.object({
+      text: z.string(),
+      angle: z.string(),
+    }),
+  ),
 });
 
 export type GeneratedVariant = { text: string; angle: string };
@@ -58,6 +54,9 @@ function systemPrompt(workspace: Workspace) {
     workspace.product_context
       ? `\nContexte produit fourni par l'équipe :\n${workspace.product_context}`
       : "",
+    "",
+    "Répondez UNIQUEMENT avec un objet JSON valide, sans texte avant ou après :",
+    '{"variants":[{"text":"...","angle":"..."},{"text":"...","angle":"..."},{"text":"...","angle":"..."}]}',
   ]
     .join("\n")
     .trim();
@@ -81,11 +80,11 @@ function userPrompt(item: SourceItem) {
 }
 
 export function aiConfigured() {
-  return Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
+  return Boolean(process.env.DEEPSEEK_API_KEY);
 }
 
 /**
- * Repli utilisé quand aucune clé Anthropic n'est configurée : l'application
+ * Repli utilisé quand aucune clé IA n'est configurée : l'application
  * reste utilisable de bout en bout, avec des brouillons dérivés de la source.
  */
 function fallbackVariants(item: SourceItem): GeneratedVariant[] {
@@ -113,26 +112,51 @@ export async function generateVariants(
     return { variants: fallbackVariants(item), simulated: true };
   }
 
-  const client = new Anthropic();
-
-  const response = await client.messages.parse({
-    model: MODEL,
-    max_tokens: 4000,
-    thinking: { type: "adaptive" },
-    output_config: { effort: "low", format: zodOutputFormat(DraftSchema) },
-    system: systemPrompt(workspace),
-    messages: [{ role: "user", content: userPrompt(item) }],
+  const response = await fetch(DEEPSEEK_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [
+        { role: "system", content: systemPrompt(workspace) },
+        { role: "user", content: userPrompt(item) },
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 1000,
+      temperature: 0.8,
+    }),
   });
 
-  const parsed = response.parsed_output;
-  if (!parsed || parsed.variants.length === 0) {
+  if (!response.ok) {
+    console.error("DeepSeek API error:", response.status, await response.text());
     return { variants: fallbackVariants(item), simulated: true };
   }
 
-  // Le schéma ne peut pas garantir la longueur : on tronque par sécurité.
-  const variants = parsed.variants
-    .map((variant) => ({ ...variant, text: variant.text.trim().slice(0, 280) }))
-    .filter((variant) => variant.text.length > 0);
+  const data = await response.json() as {
+    choices: Array<{ message: { content: string } }>;
+  };
+
+  const content = data.choices?.[0]?.message?.content ?? "";
+
+  let parsed: { variants?: Array<{ text: string; angle: string }> };
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    console.error("DeepSeek JSON parse error:", content);
+    return { variants: fallbackVariants(item), simulated: true };
+  }
+
+  const result = DraftSchema.safeParse(parsed);
+  if (!result.success || result.data.variants.length === 0) {
+    return { variants: fallbackVariants(item), simulated: true };
+  }
+
+  const variants = result.data.variants
+    .map((v) => ({ text: v.text.trim().slice(0, 280), angle: v.angle }))
+    .filter((v) => v.text.length > 0);
 
   return variants.length > 0
     ? { variants, simulated: false }
@@ -146,7 +170,6 @@ export async function generateVariants(
 export function suggestSlot(
   history: Array<{ published_at: number | null; impressions: number; likes: number }>,
 ) {
-  // Créneaux par défaut, appliqués tant qu'il n'y a pas assez d'historique.
   const DEFAULTS = [
     { day: 1, hour: 11, minute: 30 },
     { day: 2, hour: 9, minute: 15 },

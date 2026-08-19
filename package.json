@@ -16,7 +16,6 @@
     "setup:stripe": "tsx scripts/setup-stripe.mts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.117.1",
     "fast-xml-parser": "^5.11.0",
     "next": "^15.5.23",
     "pg": "^8.23.0",
