@@ -30,7 +30,8 @@ export function stripeConfigured() {
 export function stripeMode(): "test" | "live" | null {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
-  return key.startsWith("sk_live_") ? "live" : "test";
+  // Clés standard sk_live_ / sk_test_ et clés restreintes rk_live_ / rk_test_
+  return key.startsWith("sk_live_") || key.startsWith("rk_live_") ? "live" : "test";
 }
 
 let client: Stripe | null = null;

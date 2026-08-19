@@ -12,7 +12,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "verifier:facturation": "tsx scripts/verifier-facturation.mts",
-    "migrer": "tsx scripts/migrer.mts"
+    "migrer": "tsx scripts/migrer.mts",
+    "setup:stripe": "tsx scripts/setup-stripe.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
