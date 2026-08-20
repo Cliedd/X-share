@@ -1,6 +1,7 @@
 import { one, query, run, transaction, uid, now } from "./db";
 import { computeCost, debit, refund } from "./credits";
 import { publishPost, fetchMetrics } from "./x-api";
+import { getValidXConnection } from "./x-oauth";
 import { plan } from "./plans";
 import type { Draft, Workspace, XConnection } from "./types";
 
@@ -37,7 +38,8 @@ export async function publishDraft(
     [cost, now(), draft.id],
   );
 
-  const result = await publishPost(connection, draft.content);
+  const validConnection = connection ? await getValidXConnection(connection) : null;
+  const result = await publishPost(validConnection, draft.content);
 
   if (result.ok) {
     await run(

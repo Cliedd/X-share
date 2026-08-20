@@ -1,4 +1,5 @@
 import { one, run, now } from "./db";
+import type { XConnection } from "./types";
 
 /**
  * OAuth 2.0 X avec PKCE.
@@ -91,6 +92,68 @@ export async function exchangeCode(code: string, verifier: string) {
     refresh_token?: string;
     expires_in?: number;
   };
+}
+
+/**
+ * Rafraîchit le token d'accès X à partir du refresh_token stocké.
+ * Met à jour la base de données et retourne le nouveau token, ou null si
+ * le rafraîchissement échoue (le compte devra être reconnecté).
+ */
+export async function refreshXToken(connection: XConnection): Promise<string | null> {
+  if (!connection.refresh_token) return null;
+  const { clientId, clientSecret } = xConfig();
+  if (!clientId || !clientSecret) return null;
+
+  const response = await fetch(TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+    },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: connection.refresh_token,
+    }),
+  });
+
+  if (!response.ok) return null;
+
+  const data = (await response.json()) as {
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+  };
+
+  const expiresAt = data.expires_in ? now() + data.expires_in * 1000 : null;
+
+  await run(
+    `UPDATE x_connections SET access_token = ?, refresh_token = ?, token_expires_at = ? WHERE user_id = ?`,
+    [data.access_token, data.refresh_token ?? connection.refresh_token, expiresAt, connection.user_id],
+  );
+
+  return data.access_token;
+}
+
+/**
+ * Retourne la connexion avec un token valide : rafraîchit automatiquement
+ * si le token est expiré (ou expire dans moins de 5 minutes).
+ */
+export async function getValidXConnection(
+  connection: XConnection,
+): Promise<XConnection> {
+  const expiresAt = connection.token_expires_at;
+  const expiresSoon = expiresAt !== null && expiresAt < now() + 5 * 60 * 1000;
+
+  if (!expiresSoon) return connection;
+
+  const newToken = await refreshXToken(connection);
+  if (!newToken) return connection; // on tente quand même avec l'ancien
+
+  // Recharger depuis la base pour avoir token_expires_at à jour
+  const updated = await one<XConnection>(`SELECT * FROM x_connections WHERE user_id = ?`, [
+    connection.user_id,
+  ]);
+  return updated ?? { ...connection, access_token: newToken };
 }
 
 export async function fetchXProfile(accessToken: string) {
