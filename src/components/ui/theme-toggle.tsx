@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(true);
+  const [dark, setDark] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // On initialise depuis localStorage, défaut : mode sombre
     const stored = localStorage.getItem("theme");
     const isDark = stored !== "light";
     setDark(isDark);
@@ -18,11 +17,10 @@ export function ThemeToggle() {
     setDark(next);
     localStorage.setItem("theme", next ? "dark" : "light");
     document.documentElement.classList.toggle("dark", next);
-    document.documentElement.style.setProperty(
-      "color-scheme",
-      next ? "dark" : "light",
-    );
   }
+
+  // Pas encore hydraté : on n'affiche rien pour éviter le flash
+  if (dark === null) return <div className="size-9" />;
 
   return (
     <button

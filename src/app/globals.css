@@ -52,32 +52,29 @@
       var(--color-amber-400) 100%
     );
   }
+}
 
-  /* ---- Mode clair (classe .dark absente sur <html>) ---- */
+@layer base {
+  /*
+   * Mode clair : on redéfinit les variables de couleur directement sur <html>.
+   * Toutes les classes Tailwind (bg-ink-*, text-cloud, text-muted…) utilisent
+   * ces variables — elles basculent donc automatiquement sans qu'on ait à
+   * énumérer chaque classe individuellement.
+   */
   html:not(.dark) {
+    --color-ink-950: #f8f7ff;
+    --color-ink-900: #f0eeff;
+    --color-ink-850: #e8e5ff;
+    --color-ink-800: #ddd9f5;
+    --color-ink-750: #cec9ec;
+    --color-ink-700: #bdb7e0;
+    --color-cloud: #0d0a18;
+    --color-muted: #4a4270;
+    --color-faint: #7b72a0;
     --line: color-mix(in oklab, #6b6b8a 14%, transparent);
     --line-strong: color-mix(in oklab, #6b6b8a 26%, transparent);
   }
 
-  html:not(.dark) body {
-    background-color: #f8f7ff;
-    color: #1a1530;
-  }
-
-  html:not(.dark) .bg-ink-950,
-  html:not(.dark) [class*="bg-ink-9"] {
-    background-color: #f0eeff;
-  }
-  html:not(.dark) .bg-ink-900 { background-color: #eceaff; }
-  html:not(.dark) .bg-ink-850 { background-color: #e4e1ff; }
-  html:not(.dark) .bg-ink-800 { background-color: #d9d6f5; }
-
-  html:not(.dark) .text-muted { color: #5b5480; }
-  html:not(.dark) .text-faint { color: #8b82ad; }
-  html:not(.dark) .text-cloud { color: #1a1530; }
-}
-
-@layer base {
   * {
     border-color: var(--line);
   }
