@@ -1,0 +1,218 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * CLIEDD — direction chromatique « Aurore »
+ * Canevas indigo-nuit, dégradé signature corail → ambre, accent aqua.
+ * ------------------------------------------------------------------ */
+
+@theme {
+  --color-ink-950: #08060f;
+  --color-ink-900: #0d0a18;
+  --color-ink-850: #120e21;
+  --color-ink-800: #18132b;
+  --color-ink-750: #1f1936;
+  --color-ink-700: #2a2247;
+
+  --color-cloud: #f4f1ff;
+  --color-muted: #a79fc5;
+  --color-faint: #746c96;
+
+  --color-coral-300: #ff9d91;
+  --color-coral-400: #ff6b5b;
+  --color-coral-500: #f04a38;
+
+  --color-amber-300: #ffcb63;
+  --color-amber-400: #ffb020;
+  --color-amber-500: #e59200;
+
+  --color-aqua-300: #6ee7d7;
+  --color-aqua-400: #2dd4bf;
+  --color-aqua-500: #14b8a6;
+
+  --color-violet-400: #a78bfa;
+  --color-violet-500: #8b5cf6;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --font-display: var(--font-sora), var(--font-inter), ui-sans-serif, system-ui,
+    sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-4xl: 2rem;
+  --radius-5xl: 2.5rem;
+}
+
+@layer theme {
+  :root {
+    --line: color-mix(in oklab, var(--color-muted) 16%, transparent);
+    --line-strong: color-mix(in oklab, var(--color-muted) 28%, transparent);
+    --brand-gradient: linear-gradient(
+      100deg,
+      var(--color-coral-400) 0%,
+      var(--color-amber-400) 100%
+    );
+  }
+}
+
+@layer base {
+  /*
+   * Mode clair : on redéfinit les variables de couleur directement sur <html>.
+   * Toutes les classes Tailwind (bg-ink-*, text-cloud, text-muted…) utilisent
+   * ces variables — elles basculent donc automatiquement sans qu'on ait à
+   * énumérer chaque classe individuellement.
+   */
+  html:not(.dark) {
+    --color-ink-950: #f8f7ff;
+    --color-ink-900: #f0eeff;
+    --color-ink-850: #e8e5ff;
+    --color-ink-800: #ddd9f5;
+    --color-ink-750: #cec9ec;
+    --color-ink-700: #bdb7e0;
+    --color-cloud: #0d0a18;
+    --color-muted: #4a4270;
+    --color-faint: #7b72a0;
+    --line: color-mix(in oklab, #6b6b8a 14%, transparent);
+    --line-strong: color-mix(in oklab, #6b6b8a 26%, transparent);
+  }
+
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-ink-950);
+    color: var(--color-cloud);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-coral-400) 40%, transparent);
+    color: var(--color-cloud);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-amber-400);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+}
+
+@layer utilities {
+  /* Texte au dégradé signature */
+  .text-gradient {
+    background: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .bg-brand {
+    background: var(--brand-gradient);
+  }
+
+  /* Halo d'ambiance placé derrière les sections héroïques */
+  .aurora {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .aurora::before,
+  .aurora::after {
+    content: "";
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(90px);
+    opacity: 0.5;
+  }
+
+  .aurora::before {
+    width: 44rem;
+    height: 44rem;
+    top: -18rem;
+    left: -10rem;
+    background: radial-gradient(
+      circle,
+      color-mix(in oklab, var(--color-coral-400) 55%, transparent) 0%,
+      transparent 68%
+    );
+  }
+
+  .aurora::after {
+    width: 38rem;
+    height: 38rem;
+    top: -12rem;
+    right: -12rem;
+    background: radial-gradient(
+      circle,
+      color-mix(in oklab, var(--color-violet-500) 55%, transparent) 0%,
+      transparent 68%
+    );
+  }
+
+  /* Filet lumineux en bordure haute des cartes */
+  .hairline-top {
+    position: relative;
+  }
+
+  .hairline-top::before {
+    content: "";
+    position: absolute;
+    inset-inline: 15%;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--color-amber-300) 60%, transparent),
+      transparent
+    );
+  }
+
+  .grid-lines {
+    background-image:
+      linear-gradient(to right, var(--line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+    background-size: 64px 64px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 78%);
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 78%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
